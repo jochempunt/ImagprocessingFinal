@@ -24,6 +24,23 @@ namespace INFOIBV
             return output;
         }
 
+        public static Color[,] BitmapToColor(Bitmap input)
+        {
+            int width = input.Width;
+            int height = input.Height;
+            Color[,] output = new Color[height, width];
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    Color pixel = input.GetPixel(x, y);
+                    output[y, x] = pixel;
+                }
+            }
+            return output;
+        }
+
         public static Bitmap GrayscaleToBitmap(byte[,] input)
         {
             int height = input.GetLength(0);
@@ -39,7 +56,70 @@ namespace INFOIBV
                 }
             }
             return output;
+        }
 
+
+        public static Bitmap ColorToBitmap(Color[,] input)
+        {
+            int height = input.GetLength(0);
+            int width = input.GetLength(1);
+            Bitmap output = new Bitmap(width, height);
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    Color value = input[y, x];
+                    output.SetPixel(x, y, value);
+                }
+            }
+            return output;
+        }
+
+
+
+        /// <summary>
+        /// Converts Color[,] to grayscale byte[,] for processing
+        /// </summary>
+        public static byte[,] ToGrayscale(Color[,] colorImage)
+        {
+            int height = colorImage.GetLength(0);
+            int width = colorImage.GetLength(1);
+            byte[,] grayscale = new byte[height, width];
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Color pixel = colorImage[y, x];
+                    grayscale[y, x] = (byte)(
+                        0.299 * pixel.R +
+                        0.587 * pixel.G +
+                        0.114 * pixel.B
+                    );
+                }
+            }
+            return grayscale;
+        }
+
+        /// <summary>
+        /// Converts grayscale byte[,] back to Color[,]
+        /// </summary>
+        public static Color[,] ToColorImage(byte[,] grayscale)
+        {
+            int height = grayscale.GetLength(0);
+            int width = grayscale.GetLength(1);
+            Color[,] colorImage = new Color[height, width];
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    byte value = grayscale[y, x];
+                    colorImage[y, x] = Color.FromArgb(value, value, value);
+                }
+            }
+            return colorImage;
         }
     }
 }
