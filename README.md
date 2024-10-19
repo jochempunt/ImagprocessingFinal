@@ -133,7 +133,7 @@ The `Regions` class detects and analyzes connected regions in binary images. It 
 - **OuterContour**: Coordinates outlining the region's outer boundary.
 - **Area**: The total number of pixels within the region.
 - **Perimeter**: The length of the region's boundary.
-- **Circularity**: A measure of how circular the region is, calculated using 4π×AreaPerimeter2\frac{4π \times \text{Area}}{\text{Perimeter}^2}Perimeter24π×Area​.
+- **Circularity**: A measure of how circular the region is, calculated using $\frac{4\pi \times \text{Area}}{\text{Perimeter}^2}$
 - **Central Moments**: Moments calculated from the region's pixel distribution, useful for characterizing its shape.
 - **Centroid**: The center of mass, representing the average position of the pixels in the region.
 - **Elongation**: The ratio between the major and minor axes, indicating the region's tendency to be elongated.
