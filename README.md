@@ -26,7 +26,7 @@ The project revolves around detecting specific playing card types, such as spade
 - [x] Preprocessing (&Thresholding + Morphology)
 - [x] Region Finding and analysing them 
 - [ ] maybe  analysing the outer contour of the region (and maybe doing hough or corner detection if seems corner detec?)
-- [ ] finding good parameters to analyse and decide when a region is be a card(shape) or not
+- [ ] finding good parameters to analyse and decide when a region is be a card(shape) or not (see "findRegions")
 - [ ] Collecting a diverse dataset of card images (min 10, and 10 distractor images)
 - [ ] using found Card-Shapes as ROI (Regions of interest) and doing analysis again
 	- [ ] another region finding
@@ -137,7 +137,7 @@ The `Regions` class detects and analyzes connected regions in binary images. It 
 #### **Regions Class**
 
 The `Regions` class provides functions for detecting, labeling, and analyzing regions:
-
+- **floodFill**: fills  connected "edges" 
 - **findConnectedRegions**: Identifies connected regions within a binary image and returns a list of `Region` structs.
 - **calculateArea**: Calculates the area of a specific region.
 - **calculatePerimeter**: Calculates the perimeter of a specific region.
