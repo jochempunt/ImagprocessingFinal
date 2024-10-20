@@ -23,10 +23,10 @@ The project revolves around detecting specific playing card types, such as spade
 
 ### Tasks (not final/stay agile)
 - [x] Cleaning up Code into seperate classes
-- [x] Preprocessing (&Thresholding + Morphology)
-- [x] Region Finding and analysing them 
-- [ ] maybe  analysing the outer contour of the region (and maybe doing hough or corner detection if seems corner detec?)
+- [x] Preprocessing (AND edge detection + morphology to try and close open edges)
+- [x] Region Finding and analysing those shapes (can be expanded) 
 - [ ] finding good parameters to analyse and decide when a region is be a card(shape) or not (see "findRegions")
+- [ ] analysing the outer contour of the region (and maybe doing hough or corner detection if seems corner detec?)
 - [ ] Collecting a diverse dataset of card images (min 10, and 10 distractor images)
 - [ ] using found Card-Shapes as ROI (Regions of interest) and doing analysis again
 	- [ ] another region finding
