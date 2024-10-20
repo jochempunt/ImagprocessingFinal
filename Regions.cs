@@ -293,6 +293,58 @@ namespace INFOIBV
             return output;
         }
 
+        
+        /// <summary>
+        /// fill contours and shape them into "regions" (doesnt label them yet)
+        /// </summary>
+        /// <param name="edges"></param>
+        /// <returns></returns>
+        public static byte[,] FloodFill(byte[,] edges)
+        {
+            int height = edges.GetLength(0);
+            int width = edges.GetLength(1);
+            byte[,] filled = new byte[height, width];
+            Array.Copy(edges, filled, edges.Length);
+
+            // Start flood fill from border pixels
+            Queue<(int y, int x)> queue = new Queue<(int y, int x)>();
+
+            // Add border pixels to queue
+            for (int x = 0; x < width; x++)
+            {
+                if (filled[0, x] == 0) queue.Enqueue((0, x));
+                if (filled[height - 1, x] == 0) queue.Enqueue((height - 1, x));
+            }
+            for (int y = 0; y < height; y++)
+            {
+                if (filled[y, 0] == 0) queue.Enqueue((y, 0));
+                if (filled[y, width - 1] == 0) queue.Enqueue((y, width - 1));
+            }
+
+            // Flood fill from borders
+            while (queue.Count > 0)
+            {
+                var (y, x) = queue.Dequeue();
+                if (filled[y, x] == 0)
+                {
+                    filled[y, x] = 255;  // Mark as background
+
+                    // Add neighboring pixels
+                    if (y > 0 && filled[y - 1, x] == 0) queue.Enqueue((y - 1, x));
+                    if (y < height - 1 && filled[y + 1, x] == 0) queue.Enqueue((y + 1, x));
+                    if (x > 0 && filled[y, x - 1] == 0) queue.Enqueue((y, x - 1));
+                    if (x < width - 1 && filled[y, x + 1] == 0) queue.Enqueue((y, x + 1));
+                }
+            }
+
+            // Invert the image so cards are white
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                    filled[y, x] = (byte)(filled[y, x] == 0 ? 255 : 0);
+
+            return filled;
+        }
+
 
 
         #region region analysis functions
