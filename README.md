@@ -25,9 +25,10 @@ The project revolves around detecting specific playing card types, such as spade
 - [x] Cleaning up Code into seperate classes
 - [x] Preprocessing (AND edge detection + morphology to try and close open edges)
 - [x] Region Finding and analysing those shapes (can be expanded) 
-- [ ] finding good parameters to analyse and decide when a region is be a card(shape) or not (see "findRegions")
-- [ ] analysing the outer contour of the region, or using convex hull or minBoundingBox (and maybe doing hough or corner detection if seems corner detec?)
+- [x] finding good parameters to analyse and decide when a region is be a card(shape) or not (see "findRegions")
+- [x] analysing the outer contour of the region, or using convex hull or minBoundingBox 
 - [ ] Collecting a diverse dataset of card images (min 10, and 10 distractor images)
+- [ ] Rotating the card, and evtl scaling it 
 - [ ] using found Card-Shapes as ROI (Regions of interest) and doing analysis again
 	- [ ] another region finding
 	- [ ] evtl. edge detection / contour shape or sth
@@ -52,6 +53,7 @@ The library provides several classes designed for specific image processing task
 - [**Morphology**](#morphology): Handles morphological operations such as dilation and erosion.
 - [**Preprocessor**](#preprocessor): Image preprocessing functions.
 - [**Regions**](#regions): Methods for detecting and analyzing regions in binary images.
+- [**BoundingShapeAnalyser**](#BoundingShapeAnalyser): methods for calculating minBoundingBox and its features
 
 ---
 
@@ -147,3 +149,32 @@ The `Regions` class provides functions for detecting, labeling, and analyzing re
 - **calculateElongation**: Evaluates the elongation (major-to-minor axis ratio) of a region.
 
 [Back to top](#classes-overview)
+
+
+### BoundingShapeAnalyser
+
+The `BoundingShapeAnalyser` class detects and analyzes oriented bounding boxes (OBBs) in images. It provides methods to compute the minimum bounding rectangle that can enclose a shape and offers tools to visualize and calculate features like aspect ratio and bounding-to-area ratio. Each bounding box is represented by the **OrientedBoundingBox** struct, which stores essential properties to characterize the bounding shape.
+
+#### **OrientedBoundingBox Struct**
+>This struct stores the characteristics of each identified bounding box.
+
+- **Width**: The horizontal dimension of the bounding box.
+- **Height**: The vertical dimension of the bounding box.
+- **Angle**: The orientation angle of the bounding box in degrees.
+- **Center**: The (Y, X) coordinates of the center of the bounding box.
+- **Area**: The area of the bounding box, calculated as `Width × Height`.
+- **AspectRatio**: The ratio between the longer and shorter side of the bounding box, computed as $\frac{\text{max(Width, Height)}}{\text{min(Width, Height)}}$.
+
+#### **BoundingShapeAnalyser Class**
+
+The `BoundingShapeAnalyser` class provides functions for detecting and analyzing oriented bounding boxes:
+
+- **GetMinOBBox**: Determines the minimum area oriented bounding box that encloses a contour of points and returns an `OrientedBoundingBox`.
+- **DrawMinAreaRect**: Draws the minimum bounding rectangle onto an image at the given orientation.
+- **getAreaBoundingRatio**: Computes the ratio of the region's area to the bounding box's area, providing a measure of how tightly the region fits within its bounding box.
+
+#### **Helper Functions**
+- **DrawLine**: Draws a line between two points on the image using Bresenham's line algorithm.
+- **RotatePoint**: Rotates a point by a given angle around the origin and returns the new coordinates.
+
+[Back to top](#bounding-shape-analyser)

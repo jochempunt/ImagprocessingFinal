@@ -232,7 +232,7 @@ namespace INFOIBV
                         r.Elongation < 1.7 &&     // Not too elongated
                         r.Circularity > 0.65 &&
                         r.Circularity < 0.85              // Reasonably rectangular shape
-                                                          // more info to add to this might be: a Bounding-Boxs's aspect ratio, Convex hull, corner detection (not on the actual regions but on the OG image)
+                                                          
                     ).ToList();
                     Console.WriteLine(" found card shapes: " + cardRegions.Count);
 
