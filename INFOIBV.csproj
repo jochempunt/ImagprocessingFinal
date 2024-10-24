@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseFunctions.cs" />
+    <Compile Include="BoundingShapeAnalyser.cs" />
     <Compile Include="EdgeDetector.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>

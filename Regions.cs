@@ -55,6 +55,9 @@ namespace INFOIBV
         /// </summary>
         public double Elongation { get; set; }
 
+
+        public List<(int y, int x)> convexHull;
+
         /// <summary>
         /// Creates a new region with the given label
         /// </summary>
@@ -70,6 +73,7 @@ namespace INFOIBV
             CentralMoments = (0, 0, 0);
             Centroid = (0, 0);
             Elongation = 0;
+            convexHull = new List<(int Y, int X)>();
         }
     }
 
@@ -163,7 +167,7 @@ namespace INFOIBV
             return regions;
         }
 
-     
+
         /// <summary>
         /// Gets the labels of neighboring pixels in an 8-connected neighborhood
         /// </summary>
@@ -274,7 +278,7 @@ namespace INFOIBV
         public static Color[,] DrawRegions(List<Region> regions, int height, int width)
         {
             Color[,] output = new Color[height, width];
-            Random rand = new Random(12); 
+            Random rand = new Random(12);
 
             foreach (var region in regions)
             {
@@ -293,7 +297,7 @@ namespace INFOIBV
             return output;
         }
 
-        
+
         /// <summary>
         /// fill contours and shape them into "regions" (doesnt label them yet)
         /// </summary>
@@ -346,6 +350,62 @@ namespace INFOIBV
         }
 
 
+        public static byte[,] FloodFillSolid(byte[,] edges)
+        {
+            int height = edges.GetLength(0);
+            int width = edges.GetLength(1);
+            byte[,] filled = new byte[height, width];
+
+            // First pass: Copy edges and set all non-edge pixels to unvisited (0)
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                    filled[y, x] = 0;
+
+            // Create queue for flood fill
+            Queue<(int y, int x)> queue = new Queue<(int y, int x)>();
+
+            // Add border pixels to queue if they're not edge pixels
+            for (int x = 0; x < width; x++)
+            {
+                if (edges[0, x] == 0) queue.Enqueue((0, x));
+                if (edges[height - 1, x] == 0) queue.Enqueue((height - 1, x));
+            }
+            for (int y = 0; y < height; y++)
+            {
+                if (edges[y, 0] == 0) queue.Enqueue((y, 0));
+                if (edges[y, width - 1] == 0) queue.Enqueue((y, width - 1));
+            }
+
+            // Flood fill from borders, marking background as 255
+            // Will only spread through non-edge pixels
+            while (queue.Count > 0)
+            {
+                var (y, x) = queue.Dequeue();
+                if (filled[y, x] == 0 && edges[y, x] == 0) // Only fill if unvisited and not an edge
+                {
+                    filled[y, x] = 255;  // Mark as background
+
+                    // Add neighboring pixels if they're not edges
+                    if (y > 0 && edges[y - 1, x] == 0 && filled[y - 1, x] == 0)
+                        queue.Enqueue((y - 1, x));
+                    if (y < height - 1 && edges[y + 1, x] == 0 && filled[y + 1, x] == 0)
+                        queue.Enqueue((y + 1, x));
+                    if (x > 0 && edges[y, x - 1] == 0 && filled[y, x - 1] == 0)
+                        queue.Enqueue((y, x - 1));
+                    if (x < width - 1 && edges[y, x + 1] == 0 && filled[y, x + 1] == 0)
+                        queue.Enqueue((y, x + 1));
+                }
+            }
+
+            // Final pass: Invert and ensure all non-background pixels are white
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                    filled[y, x] = (byte)(filled[y, x] == 255 ? 0 : 255);
+
+            return filled;
+        }
+
+
 
         #region region analysis functions
         /// <summary>
@@ -359,7 +419,7 @@ namespace INFOIBV
             // Basic properties
             region.Area = region.Pixels.Count;
             region.OuterContour = TraceBoundary(binaryImage, region.Pixels[0]);
-            region.Perimeter = region.OuterContour.Count;
+            region.Perimeter = CalculateAccuratePerimeter(region.OuterContour);
             region.Centroid = CalculateCentroid(region);
             region.CentralMoments = CalculateCentralMoments(region);
             region.Elongation = CalculateElongation(region.CentralMoments);
@@ -401,7 +461,7 @@ namespace INFOIBV
             return (m20 / region.Area, m02 / region.Area, m11 / region.Area);
         }
 
-      
+
 
         /// <summary>
         /// Calculates the elongation using eigenvalues
@@ -415,17 +475,37 @@ namespace INFOIBV
             return Math.Sqrt(lambda1 / lambda2);
         }
 
-      
 
-        /// <summary>
-        /// Calculates the rectangularity of the region
-        /// </summary>
-        private static double CalculateRectangularity(
-            Region region,
-            (double Length, double Width) boundingRect)
+        private static double CalculateAccuratePerimeter(List<(int Y, int X)> contour)
         {
-            return region.Area / (boundingRect.Length * boundingRect.Width);
+            double perimeter = 0;
+
+            for (int i = 0; i < contour.Count; i++)
+            {
+                var currentPixel = contour[i];
+                var nextPixel = contour[(i + 1) % contour.Count]; // Loop back at the end to close the contour
+
+                int deltaY = Math.Abs(nextPixel.Y - currentPixel.Y);
+                int deltaX = Math.Abs(nextPixel.X - currentPixel.X);
+
+                if (deltaY == 0 || deltaX == 0)
+                {
+                    // Horizontal or vertical step
+                    perimeter += 1;
+                }
+                else if (deltaY == 1 && deltaX == 1)
+                {
+                    // Diagonal step
+                    perimeter += Math.Sqrt(2);
+                }
+            }
+
+            return perimeter;
         }
+
+
+
+
 
         /// <summary>
         /// Calculates the circularity of the region
@@ -434,8 +514,9 @@ namespace INFOIBV
         {
             return (4 * Math.PI * region.Area) / (region.Perimeter * region.Perimeter);
         }
+
         #endregion
 
-       
     }
 }
+

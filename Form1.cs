@@ -26,9 +26,9 @@ namespace INFOIBV
          */
         private enum ProcessingFunctions
         {
-          Preprocess,
-          FindEdges,
-          FindRegions
+            Preprocess,
+            FindEdges,
+            FindRegions
         }
 
 
@@ -163,48 +163,58 @@ namespace INFOIBV
             {
                 case ProcessingFunctions.Preprocess:
                     byte[,] adjustedContrast = Preprocessor.adjustContrast(grayScale);
-                    //byte[,] blurred = Preprocessor.applyGaussianFilter(grayScale, 2f, 13);
-                    byte[,] edges = EdgeDetector.detectEdgesCanny(adjustedContrast, 50, 120, 1f, 5);
 
-                   
+                    //byte[,] blurred = Preprocessor.applyGaussianFilter(grayScale, 2f, 13);
+                    byte[,] edges = EdgeDetector.detectEdgesCanny(adjustedContrast, 40, 150, 1.2f, 5);
+
+
                     // 2. Dilate edges slightly to connect small gaps
-                    byte[,] dilatedEdges = Morphology.Dilate(edges, Morphology.ElementShape.Plus, 3, Morphology.ImageType.Binary);
+                    byte[,] dilatedEdges = Morphology.Dilate(edges, Morphology.ElementShape.Plus, 5, Morphology.ImageType.Binary);
 
                     // 3. Close edges to connect larger gaps
                     byte[,] closedEdges = Morphology.Close(dilatedEdges, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
 
                     // do a floodFill to fill out connected edes into regions
-                    byte[,] regionsBinary = Regions.FloodFill(closedEdges);
+                    byte[,] regionsBinary = Regions.FloodFillSolid(closedEdges);
                     // clean up noise and fill small holes
-                    byte[,] cleaned = Morphology.Close(regionsBinary, Morphology.ElementShape.Square,7, Morphology.ImageType.Binary);
+                    byte[,] cleaned = Morphology.Open(regionsBinary, Morphology.ElementShape.Square, 9, Morphology.ImageType.Binary);
                     return ImageConverter.ToColorImage(cleaned);
                 case ProcessingFunctions.FindEdges:
-                    return  ImageConverter.ToColorImage(EdgeDetector.detectEdgesCanny(grayScale, 50, 120, 1f, 5));
+                    byte[,] adjj = Preprocessor.adjustContrast(grayScale);
+
+                    byte[,] edger = EdgeDetector.detectEdgesCanny(adjj, 40, 130, 2f, 5);
+                    // 2. Dilate edges slightly to connect small gaps
+                    byte[,] dilateEdger = Morphology.Dilate(edger, Morphology.ElementShape.Plus, 5, Morphology.ImageType.Binary);
+
+                    // 3. Close edges to connect larger gaps
+
+                    return ImageConverter.ToColorImage(Morphology.Close(dilateEdger, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary));
                 case ProcessingFunctions.FindRegions:
                     byte[,] adj = Preprocessor.adjustContrast(grayScale);
+
                     //byte[,] blurred = Preprocessor.applyGaussianFilter(grayScale, 2f, 13);
-                    byte[,] edge = EdgeDetector.detectEdgesCanny(adj, 50, 120, 1.1f, 5);
+                    byte[,] edge = EdgeDetector.detectEdgesCanny(adj, 50, 150, 1.4f, 5);
 
                     // 2. Dilate edges slightly to connect small gaps
                     byte[,] dilateEdge = Morphology.Dilate(edge, Morphology.ElementShape.Plus, 5, Morphology.ImageType.Binary);
 
                     // 3. Close edges to connect larger gaps
-                    byte[,] closedEdge = Morphology.Close(dilateEdge, Morphology.ElementShape.Square, 5, Morphology.ImageType.Binary);
+                    byte[,] closedEdge = Morphology.Close(dilateEdge, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
 
                     // do a floodFill to fill out connected edes into regions
-                    byte[,] regionsFilled = Regions.FloodFill(closedEdge);
+                    byte[,] solidRegions = Regions.FloodFillSolid(closedEdge);
                     // clean up noise and fill small holes
-                    byte[,] cleanedRegions = Morphology.Close(regionsFilled, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
-
-                    List<Region> regions =  Regions.FindRegions(cleanedRegions);
+                    //byte[,] cleanedRegions = Morphology.Close(regionsFilled, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
+                    byte[,] cleanedRegions = Morphology.Open(solidRegions, Morphology.ElementShape.Plus, 9, Morphology.ImageType.Binary);
+                    List<Region> regions = Regions.FindRegions(cleanedRegions);
                     Console.WriteLine($"Total number of regions: {regions.Count}");
 
                     Console.WriteLine("min area: " + (width * height) / 30);
                     Console.WriteLine("max area: " + (width * height) / 3);
 
-                    foreach(Region region in regions)
+                    foreach (Region region in regions)
                     {
-                        if(region.Area >= 200)
+                        if (region.Area >= 2000)
                         {
                             Console.WriteLine($"Region {region.Label} Area: {region.Area} Perimeter: {region.Perimeter}");
                             Console.WriteLine($"| Circularity: {region.Circularity} Elongation: {region.Elongation} Centroid: {region.Centroid}");
@@ -216,17 +226,40 @@ namespace INFOIBV
 
                     // Filter regions based on card-like properties
                     List<Region> cardRegions = regions.Where(r =>
-                        r.Area >= (width*height)/100 &&  // min  size
+                        r.Area >= (width * height) / 100 &&  // min  size
                         r.Area <= (width * height) / 3 &&   // max size
                         r.Elongation > 1.2 &&               // cards are rectangular (so elongated)
-                        r.Elongation < 2.0 &&     // Not too elongated
-                        r.Circularity > 0.25 &&
-                        r.Circularity < 1.1              // Reasonably rectangular shape
-                        // more info to add to this might be: a Bounding-Boxs's aspect ratio, Convex hull, corner detection (not on the actual regions but on the OG image)
+                        r.Elongation < 1.7 &&     // Not too elongated
+                        r.Circularity > 0.65 &&
+                        r.Circularity < 0.85              // Reasonably rectangular shape
+                                                          // more info to add to this might be: a Bounding-Boxs's aspect ratio, Convex hull, corner detection (not on the actual regions but on the OG image)
                     ).ToList();
                     Console.WriteLine(" found card shapes: " + cardRegions.Count);
+
+                    Color[,] cardRegionImg = Regions.DrawRegions(cardRegions, height, width);
+
+
+                    for (int i = 0; i < cardRegions.Count; i++)
+                    {
+                        OrientedBoundingBox minBoundingBox = BoundingShapeAnalyser.GetMinOBBox(cardRegions[i].OuterContour);
+                        double areBoundingRation = BoundingShapeAnalyser.getAreaBoundingRatio(minBoundingBox, cardRegions[i].Area);
+                        Console.WriteLine($"Region: {cardRegions[i].Label}, Bounding Box Ratio: {areBoundingRation}");
+                        Console.WriteLine($"angle: {minBoundingBox.Angle}");
+                        if(areBoundingRation> 0.9)
+                        {
+                            // then its most likely a rectangle, we can continue to check the aspectRatio of the boundingbox
+                            // and when we checked that we can use the bounding-box orientation to technically rotate the region in the original image into the right location (maybe even scale it to a certain size) [we need to do sampling here tho]
+                            // then do thresholding/edge detection or sth inside the cards
+                            // then we can commence to check if there are regions in the upper and lower corner of the card -> there will be our suit and number values
+                            // and lastly check if our desired suit is actually in the card (color, shape, evtl. template matching OR corner/circle detection
+                        }
+
+                        BoundingShapeAnalyser.DrawMinAreaRect(cardRegionImg, minBoundingBox, Color.Black);
+                    }
+
+
                     // 6. Draw only the filtered regions
-                    return Regions.DrawRegions(cardRegions, height, width);
+                    return cardRegionImg;
                 default:
                     return null;
             }
