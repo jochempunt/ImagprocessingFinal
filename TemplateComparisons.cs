@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -105,9 +107,47 @@ namespace INFOIBV
                     
         }
 
+        private int countForegroundPixel(byte[,] input)
+        {
+            int foregroundCount = 0; // Initialize a counter for foreground pixels
+
+            // Loop through each element in the 2D byte array
+            for (int row = 0; row < input.GetLength(0); row++)
+            {
+                for (int col = 0; col < input.GetLength(1); col++)
+                {
+                    // Check if the current pixel is a foreground pixel
+                    if (input[row, col] == 1)
+                    {
+                        foregroundCount++; // Increment the counter
+                    }
+                }
+            }
+
+            return foregroundCount; // Return the total count of foreground pixels
+        }
         public byte[,] ChamferMatch(byte[,] search, byte[,] reference)
         {
+            byte[,] dtrans = DistanceTransform(search);
+            int forgound =  countForegroundPixel(reference);
+            int hq = search.GetLength(0) - reference.GetLength(0) + 1;
+            int wq = search.GetLength(1) - reference.GetLength(1) + 1;
+            byte[,] Q = new byte[hq, wq];
 
+            for (int row = 0; row < hq - 1; row++)
+                for(int col = 0; col < wq - 1; col++)
+                {
+                    int q = 0;
+                    for (int y = 0; i < reference.GetLength(0) - 1; y++)
+                        for (int x = 0; j < reference.GetLength(1) - 1; x++)
+                        {
+                            if (reference[y, x] == 1)
+                                q = q + dtrans[row + y, col + x];
+                        }
+                    Q[row, col] = (byte)(q / forgound);
+
+                }
+            return Q;
         }
 
 
