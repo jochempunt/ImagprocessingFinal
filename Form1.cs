@@ -244,9 +244,14 @@ namespace INFOIBV
                         OrientedBoundingBox minBoundingBox = BoundingShapeAnalyser.GetMinOBBox(cardRegions[i].OuterContour);
                         double areBoundingRation = BoundingShapeAnalyser.getAreaBoundingRatio(minBoundingBox, cardRegions[i].Area);
                         Console.WriteLine($"Region: {cardRegions[i].Label}, Bounding Box Ratio: {areBoundingRation}");
-                        Console.WriteLine($"angle: {minBoundingBox.Angle}");
+                        Console.WriteLine($"angle: {minBoundingBox.Angle}, {minBoundingBox.AspectRatio}");
                         if(areBoundingRation> 0.9)
                         {
+                            double aspectR = Math.Round(minBoundingBox.AspectRatio,2);
+                            if(aspectR > 1.1 && aspectR < 1.6)
+                            {
+                                BoundingShapeAnalyser.DrawMinAreaRect(workingImage, minBoundingBox, Color.Red);
+                            }
                             // then its most likely a rectangle, we can continue to check the aspectRatio of the boundingbox
                             // and when we checked that we can use the bounding-box orientation to technically rotate the region in the original image into the right location (maybe even scale it to a certain size) [we need to do sampling here tho]
                             // then do thresholding/edge detection or sth inside the cards
@@ -254,12 +259,12 @@ namespace INFOIBV
                             // and lastly check if our desired suit is actually in the card (color, shape, evtl. template matching OR corner/circle detection
                         }
 
-                        BoundingShapeAnalyser.DrawMinAreaRect(cardRegionImg, minBoundingBox, Color.Black);
+                        
                     }
 
 
                     // 6. Draw only the filtered regions
-                    return cardRegionImg;
+                    return workingImage;
                 default:
                     return null;
             }
