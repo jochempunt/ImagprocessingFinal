@@ -7,14 +7,20 @@ using System.Runtime.Remoting.Messaging;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Windows.Forms.AxHost;
 
 
 namespace INFOIBV
 {
     internal class TemplateComparisons
     {
-        private byte[,] CreateMR (byte field1, byte field2, byte field3, byte field4)
+        // We use the eucledian version of the MR of ML
+        private byte[,] CreateMR (int scale)
         {
+            byte field1 = (byte) (1 * scale);
+            byte field2 = (byte)(Math.Sqrt(2) * scale);
+            byte field3 = (byte)(1 * scale);
+            byte field4 = (byte)(Math.Sqrt(2) * scale);
 
             return new byte[,]
                             {
@@ -24,8 +30,13 @@ namespace INFOIBV
 
                             };
         }
-        private byte[,] CreateML(byte field1, byte field2, byte field3, byte field4)
+        private byte[,] CreateML(int scale)
         {
+            byte field1 = (byte)(1 * scale);
+            byte field2 = (byte)(Math.Sqrt(2) * scale);
+            byte field3 = (byte)(1 * scale);
+            byte field4 = (byte)(Math.Sqrt(2) * scale);
+
 
             return new byte[,]
                             {
@@ -87,8 +98,8 @@ namespace INFOIBV
 
 
             byte[,] result = new byte[Heigth, Width];
-            byte[,] Mr = new byte[3, 3];
-            byte[,] Ml = new byte[3, 3];
+            byte[,] Mr = CreateMR(1);
+            byte[,] Ml = CreateML(1);
 
             for (int row = 0; row < Heigth; row++)
                 for (int col = 0; col < Width; col++)
@@ -138,8 +149,8 @@ namespace INFOIBV
                 for(int col = 0; col < wq - 1; col++)
                 {
                     int q = 0;
-                    for (int y = 0; i < reference.GetLength(0) - 1; y++)
-                        for (int x = 0; j < reference.GetLength(1) - 1; x++)
+                    for (int y = 0; y < reference.GetLength(0) - 1; y++)
+                        for (int x = 0; x < reference.GetLength(1) - 1; x++)
                         {
                             if (reference[y, x] == 1)
                                 q = q + dtrans[row + y, col + x];
