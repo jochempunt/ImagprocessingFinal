@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Diagnostics;
+using System.IO;
 
 
 namespace INFOIBV
@@ -17,6 +18,7 @@ namespace INFOIBV
     }
     public partial class INFOIBV : Form
     {
+        private Byte[,] Template;
         private Bitmap InputImage;
         private Bitmap OutputImage;
 
@@ -56,6 +58,29 @@ namespace INFOIBV
             populateCombobox();
             //imageProcessor = new ImageProcessor();
             initValues();
+            LoadTemplate();
+        }
+
+
+        private void LoadTemplate()
+        {
+            // Go up two levels from bin\Debug to reach project root
+            string projectDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
+            string fullPath = Path.Combine(projectDir, "images", "invertedTemplate.bmp");
+
+            Console.WriteLine($"Loading from: {fullPath}"); // Debug line
+
+            try
+            {
+                using (var templateBitmap = new Bitmap(fullPath))
+                {
+                    Template = ImageConverter.BitmapToGrayscale(templateBitmap);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
         }
         private void PrintTuples(List<(int, int)> tuples)
         {
@@ -135,7 +160,7 @@ namespace INFOIBV
             }
             catch (Exception exc)
             {
-                MessageBox.Show(exc.Message);
+                Console.WriteLine(exc);
             }
         }
 
@@ -232,7 +257,7 @@ namespace INFOIBV
                         r.Elongation < 1.7 &&     // Not too elongated
                         r.Circularity > 0.65 &&
                         r.Circularity < 0.85              // Reasonably rectangular shape
-                                                          
+
                     ).ToList();
                     Console.WriteLine(" found card shapes: " + potentialCardRegions.Count);
 
@@ -247,34 +272,61 @@ namespace INFOIBV
                         double areBoundingRation = BoundingShapeAnalyser.getAreaBoundingRatio(minBoundingBox, potentialCardRegions[i].Area);
                         Console.WriteLine($"Region: {potentialCardRegions[i].Label}, Bounding Box Ratio: {areBoundingRation}");
                         Console.WriteLine($"angle: {minBoundingBox.Angle}, {minBoundingBox.AspectRatio}");
-                        if(areBoundingRation> 0.8)
+                        if (areBoundingRation > 0.8)
                         {
-                            double aspectR = Math.Round(minBoundingBox.AspectRatio,2);
-                            if(aspectR >1.1 && aspectR <= 1.7)
+                            double aspectR = Math.Round(minBoundingBox.AspectRatio, 2);
+                            if (aspectR > 1.1 && aspectR <= 1.7)
                             {
                                 obbs.Add(minBoundingBox);
-                                rotatedCards.Add(BoundingShapeAnalyser.RotateRegionToUpright(potentialCardRegions[i],grayScale, minBoundingBox));
+                                rotatedCards.Add(BoundingShapeAnalyser.RotateRegionToUpright(potentialCardRegions[i], grayScale , minBoundingBox));
                                 refinedCardRegions.Add(potentialCardRegions[i]);
                                 BoundingShapeAnalyser.DrawMinAreaRect(workingImage, minBoundingBox, Color.Red);
                             }
-                        } 
+                        }
                     }
+
+
+                    // Before calling ChamferMatch, ensure your images are binary
+                    //byte[,] binaryTemplate = EdgeDetector.detectEdgesCanny(Template, 50, 200, 0.1f, 3);
+                    byte[,] binaryTemplate = Preprocessor.thresholdImage(Template, 127);
+
                     //prepare card regions for template matching
-                    for (int j = 0; j<rotatedCards.Count;j++)
+                    for (int j = 0; j < rotatedCards.Count; j++)
                     {
-                       byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(rotatedCards[j], 127);
-                        thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
+                        //byte[,] thresholdedCardRegion = EdgeDetector.detectEdgesCanny(rotatedCards[j], 100, 200, 0.1f, 3);
+                        byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(rotatedCards[j], 127);
+                        //thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
+                        
+
                         thresholdedCards.Add(thresholdedCardRegion);
                     }
-                    // then do template matching on card suits and draw bounding boxes on final matching cards
-                    return Regions.DrawRegions(potentialCardRegions,height,width);
+                    byte[,] tchamferMatchResult = null;
 
-                    return ImageConverter.ToColorImage(thresholdedCards[0]);
+                  
+
+                    tchamferMatchResult = TemplateComparisons.ChamferMatch(thresholdedCards[0], binaryTemplate);
+                    return ImageConverter.ToColorImage(tchamferMatchResult);
                 default:
                     return null;
             }
         }
+        private static byte FindGlobalMin(byte[,] array)
+        {
+            byte min = byte.MaxValue;
+            for (int y = 0; y < array.GetLength(0); y++)
+                for (int x = 0; x < array.GetLength(1); x++)
+                    if (array[y, x] < min) min = array[y, x];
+            return min;
+        }
 
+        private static byte FindGlobalMax(byte[,] array)
+        {
+            byte max = byte.MinValue;
+            for (int y = 0; y < array.GetLength(0); y++)
+                for (int x = 0; x < array.GetLength(1); x++)
+                    if (array[y, x] > max) max = array[y, x];
+            return max;
+        }
         /*
          * saveButton_Click: process when user clicks "Save" button
          */
