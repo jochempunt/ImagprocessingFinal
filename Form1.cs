@@ -225,7 +225,7 @@ namespace INFOIBV
                     }
 
                     // Filter regions based on card-like properties
-                    List<Region> cardRegions = regions.Where(r =>
+                    List<Region> potentialCardRegions = regions.Where(r =>
                         r.Area >= (width * height) / 100 &&  // min  size
                         r.Area <= (width * height) / 3 &&   // max size
                         r.Elongation > 1.2 &&               // cards are rectangular (so elongated)
@@ -234,37 +234,42 @@ namespace INFOIBV
                         r.Circularity < 0.85              // Reasonably rectangular shape
                                                           
                     ).ToList();
-                    Console.WriteLine(" found card shapes: " + cardRegions.Count);
+                    Console.WriteLine(" found card shapes: " + potentialCardRegions.Count);
 
-                    Color[,] cardRegionImg = Regions.DrawRegions(cardRegions, height, width);
-
-
-                    for (int i = 0; i < cardRegions.Count; i++)
+                    Color[,] cardRegionImg = Regions.DrawRegions(potentialCardRegions, height, width);
+                    List<Byte[,]> rotatedCards = new List<Byte[,]>();
+                    List<OrientedBoundingBox> obbs = new List<OrientedBoundingBox>();
+                    List<Region> refinedCardRegions = new List<Region>();
+                    List<byte[,]> thresholdedCards = new List<byte[,]>();
+                    for (int i = 0; i < potentialCardRegions.Count; i++)
                     {
-                        OrientedBoundingBox minBoundingBox = BoundingShapeAnalyser.GetMinOBBox(cardRegions[i].OuterContour);
-                        double areBoundingRation = BoundingShapeAnalyser.getAreaBoundingRatio(minBoundingBox, cardRegions[i].Area);
-                        Console.WriteLine($"Region: {cardRegions[i].Label}, Bounding Box Ratio: {areBoundingRation}");
+                        OrientedBoundingBox minBoundingBox = BoundingShapeAnalyser.GetMinOBBox(potentialCardRegions[i].OuterContour);
+                        double areBoundingRation = BoundingShapeAnalyser.getAreaBoundingRatio(minBoundingBox, potentialCardRegions[i].Area);
+                        Console.WriteLine($"Region: {potentialCardRegions[i].Label}, Bounding Box Ratio: {areBoundingRation}");
                         Console.WriteLine($"angle: {minBoundingBox.Angle}, {minBoundingBox.AspectRatio}");
-                        if(areBoundingRation> 0.9)
+                        if(areBoundingRation> 0.8)
                         {
                             double aspectR = Math.Round(minBoundingBox.AspectRatio,2);
-                            if(aspectR > 1.1 && aspectR < 1.6)
+                            if(aspectR >1.1 && aspectR <= 1.7)
                             {
+                                obbs.Add(minBoundingBox);
+                                rotatedCards.Add(BoundingShapeAnalyser.RotateRegionToUpright(potentialCardRegions[i],grayScale, minBoundingBox));
+                                refinedCardRegions.Add(potentialCardRegions[i]);
                                 BoundingShapeAnalyser.DrawMinAreaRect(workingImage, minBoundingBox, Color.Red);
                             }
-                            // then its most likely a rectangle, we can continue to check the aspectRatio of the boundingbox
-                            // and when we checked that we can use the bounding-box orientation to technically rotate the region in the original image into the right location (maybe even scale it to a certain size) [we need to do sampling here tho]
-                            // then do thresholding/edge detection or sth inside the cards
-                            // then we can commence to check if there are regions in the upper and lower corner of the card -> there will be our suit and number values
-                            // and lastly check if our desired suit is actually in the card (color, shape, evtl. template matching OR corner/circle detection
-                        }
-
-                        
+                        } 
                     }
+                    //prepare card regions for template matching
+                    for (int j = 0; j<rotatedCards.Count;j++)
+                    {
+                       byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(rotatedCards[j], 127);
+                        thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
+                        thresholdedCards.Add(thresholdedCardRegion);
+                    }
+                    // then do template matching on card suits and draw bounding boxes on final matching cards
+                    return Regions.DrawRegions(potentialCardRegions,height,width);
 
-
-                    // 6. Draw only the filtered regions
-                    return workingImage;
+                    return ImageConverter.ToColorImage(thresholdedCards[0]);
                 default:
                     return null;
             }
