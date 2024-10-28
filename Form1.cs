@@ -30,7 +30,8 @@ namespace INFOIBV
         {
             Preprocess,
             FindEdges,
-            FindRegions
+            FindRegions,
+            DetectCircles
         }
 
 
@@ -131,8 +132,8 @@ namespace INFOIBV
                 if (InputImage != null) InputImage.Dispose();               // reset image
                 InputImage = new Bitmap(file);                              // create new Bitmap from file
                 if (InputImage.Size.Height <= 0 || InputImage.Size.Width <= 0 ||
-                    InputImage.Size.Height > 512 || InputImage.Size.Width > 512) // dimension check (may be removed or altered)
-                    MessageBox.Show("Error in image dimensions (have to be > 0 and <= 512)");
+                    InputImage.Size.Height > 2048 || InputImage.Size.Width > 2048) // dimension check (may be removed or altered)
+                    MessageBox.Show("Error in image dimensions (have to be > 0 and <= 2048)");
                 else
                 {
                     byte[,] grayscaleImage = ImageConverter.BitmapToGrayscale(InputImage);
@@ -253,7 +254,7 @@ namespace INFOIBV
                     List<Region> potentialCardRegions = regions.Where(r =>
                         r.Area >= (width * height) / 100 &&  // min  size
                         r.Area <= (width * height) / 3 &&   // max size
-                        r.Elongation > 1.2 &&               // cards are rectangular (so elongated)
+                        r.Elongation > 1.15 &&               // cards are rectangular (so elongated)
                         r.Elongation < 1.7 &&     // Not too elongated
                         r.Circularity > 0.65 &&
                         r.Circularity < 0.85              // Reasonably rectangular shape
@@ -286,26 +287,48 @@ namespace INFOIBV
                     }
 
 
-                    // Before calling ChamferMatch, ensure your images are binary
-                    //byte[,] binaryTemplate = EdgeDetector.detectEdgesCanny(Template, 50, 200, 0.1f, 3);
-                    byte[,] binaryTemplate = Preprocessor.thresholdImage(Template, 127);
 
-                    //prepare card regions for template matching
+
+                    //prepare card regions for sea
                     for (int j = 0; j < rotatedCards.Count; j++)
                     {
-                        //byte[,] thresholdedCardRegion = EdgeDetector.detectEdgesCanny(rotatedCards[j], 100, 200, 0.1f, 3);
                         byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(rotatedCards[j], 127);
-                        //thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
-                        
-
+                        thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
                         thresholdedCards.Add(thresholdedCardRegion);
                     }
-                    byte[,] tchamferMatchResult = null;
 
-                  
 
-                    tchamferMatchResult = TemplateComparisons.ChamferMatch(thresholdedCards[0], binaryTemplate);
-                    return ImageConverter.ToColorImage(tchamferMatchResult);
+                   
+                    List<Region> heartSymbolss = new List<Region>();
+                    for (int i = 0; i <thresholdedCards.Count  ;i++)
+                    {
+                        List<Region> potentialSymbols = Regions.FindRegions(thresholdedCards[i]);
+                        //if not a heart symbol continue, if a heart symbol save this card, and make sure u keep the index of the "refinedRegions"
+                        // then finally output a list with all cardRegions that do have atleast one heart in them.
+
+                        foreach(Region pSymbol in potentialSymbols)
+                        {
+                          
+                            
+
+                        }
+
+                    }
+
+                    Console.WriteLine("-----> hearts found total:" + heartSymbolss.Count);
+                    
+                    Color[,] cardImg2 = Regions.DrawRegions(refinedCardRegions, height, width);
+
+                 
+                    //return cardImg2;
+                    return ImageConverter.ToColorImage(rotatedCards[0]);
+                case ProcessingFunctions.DetectCircles:
+                    byte[,] Symboledges = EdgeDetector.detectEdgesCanny(grayScale, 40, 130, 0.5f, 3);
+                    float minRadius = (int)Math.Round(Math.Sqrt(width * height) * 0.15);
+                    float maxRadius = (int)Math.Round(Math.Sqrt(width * height) * 0.25);
+                    Console.WriteLine(" min and max radi (" + minRadius + "," + maxRadius + ")");
+                    List<CircleDetectorHough.Circle> foundCircles = CircleDetectorHough.DetectCircles(Symboledges, 3, maxRadius, 1f, 0.75f);
+                    return CircleDetectorHough.DrawCircles(foundCircles, workingImage);
                 default:
                     return null;
             }
