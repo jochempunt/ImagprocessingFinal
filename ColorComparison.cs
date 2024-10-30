@@ -19,7 +19,8 @@ namespace INFOIBV
             const double minRedHue = 340;          // Minimum hue for red (in degrees)
             const double maxRedHue = 20;           // Maximum hue for red (in degrees)
 
-            bool hasRedPixels = false;
+            bool isRed = false;
+            int redThresh = 0;
 
                 foreach ((int y, int x) in regionG.Pixels)
                 {
@@ -37,12 +38,13 @@ namespace INFOIBV
                         // Check if hue is within red range (either between 0-20 or 340-360)
                         if ((hue >= 0 && hue <= maxRedHue) || (hue >= minRedHue && hue <= 360))
                         {
-                            hasRedPixels = true;
-                            break;  // No need to continue if we find a red pixel
+                            redThresh += 1;
+                            if (redThresh / regionG.Pixels.Count > 0.5)
+                                isRed = true;
                         }
                     }
                 }
-            return hasRedPixels;
+            return isRed;
         }
           
         
