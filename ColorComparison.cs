@@ -10,7 +10,7 @@ namespace INFOIBV
 {
     internal class ColorComparison
     {
-        public bool CompareColor(Region regionG, Color[,] colourImage)
+        public static bool isRedColor(Region regionG, Color[,] colourImage)
         {
             // Define the RGB thresholds and hue range for identifying "red"
             const byte redThreshold = 150;         // Minimum red channel value
@@ -49,7 +49,7 @@ namespace INFOIBV
         }
           
         
-        private (double Hue, double Saturation, double Value) RGBtoHSV(int r, int g, int b)
+        private static (double Hue, double Saturation, double Value) RGBtoHSV(int r, int g, int b)
         {
             double red = r / 255.0;
             double green = g / 255.0;

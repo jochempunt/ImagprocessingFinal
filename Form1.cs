@@ -32,7 +32,8 @@ namespace INFOIBV
             Preprocess,
             FindEdges,
             FindRegions,
-            DetectCircles
+            DetectCircles,
+            CheckColor
         }
 
 
@@ -377,6 +378,15 @@ namespace INFOIBV
                 case ProcessingFunctions.DetectCircles:
                     List<CircleDetectorHough.Circle> foundCircles = CircleDetectorHough.findCircles(grayScale);
                     return CircleDetectorHough.DrawCircles(foundCircles, workingImage);
+                case ProcessingFunctions.CheckColor:
+                    byte[,] thresholded = Preprocessor.thresholdImage(grayScale, 127);
+                    thresholded = Preprocessor.InvertImage(thresholded);
+                    List<Region> regionz = Regions.FindRegions(thresholded);
+                    foreach (Region region in regionz)
+                    {
+                        Console.WriteLine($"region {region.Label} is Red: {ColorComparison.isRedColor(region, workingImage)}");
+                    }
+                    return Regions.DrawRegions(regionz,height,width);
                 default:
                     return null;
             }
