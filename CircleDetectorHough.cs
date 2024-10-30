@@ -25,7 +25,7 @@ namespace INFOIBV
         }
 
 
-        public static List<Circle> DetectCircles(byte[,] inputImage, float minRadius, float maxRadius, float radiusStep, float thresholdPercentage)
+        private static List<Circle> DetectCircles(byte[,] inputImage, float minRadius, float maxRadius, float radiusStep, float thresholdPercentage)
         {
             List<Circle> foundCircles = new List<Circle>();
             int[,,] accumulator = houghTransformCircles(inputImage, minRadius, maxRadius, radiusStep);
@@ -41,7 +41,7 @@ namespace INFOIBV
             int thresholdValue = (int)Math.Round(thresholdPercentage * maxAccumulatorValue);
             List<Circle> initalCircles = findCircles(supressedAccumulator, minRadius, radiusStep, thresholdValue);
             Console.WriteLine("amount of circles detected: " + initalCircles.Count);
-            foundCircles = MergeSimilarCircles(initalCircles,((inputImage.GetLength(0) + inputImage.GetLength(1))/2 )* 0.1f);
+            foundCircles = MergeSimilarCircles(initalCircles,((inputImage.GetLength(0) + inputImage.GetLength(1))/2 )* 0.15f);
             Console.WriteLine("amount of distinct circles detected: " + foundCircles.Count);
             // now check if circles have very similar center position, then check if they are similar size
 
@@ -49,8 +49,32 @@ namespace INFOIBV
         }
 
 
+        public static List<Circle> findCircles(byte[,]greyScaleImage)
+        {
+            byte[,] SymbolEdges = EdgeDetector.detectEdgesCanny(greyScaleImage, 40, 130, 1f, 3);
 
-        private static List<Circle> MergeSimilarCircles(List<Circle> circles,double centerDistanceThreshold = 2f)
+            int width = greyScaleImage.GetLength(1);
+            int height = greyScaleImage.GetLength(0);
+            float arithmeticMean = (width + height) / 2f;
+            // Arithmetic mean based
+            float minRadiusArithmetic = (int)Math.Round(arithmeticMean * 0.16);
+            float maxRadiusArithmetic = (int)Math.Round(arithmeticMean * 0.3);
+
+            // Apply safety bounds to your actual used values
+            minRadiusArithmetic = Math.Max(minRadiusArithmetic, 3);
+            
+
+            // Debug logging
+            Console.WriteLine("=== Debug Information ===");
+            Console.WriteLine($"Image dimensions: ({width}, {height})");
+            Console.WriteLine($"min and max radi: ({minRadiusArithmetic}, {maxRadiusArithmetic})");
+
+
+            return CircleDetectorHough.DetectCircles(SymbolEdges, minRadiusArithmetic, maxRadiusArithmetic, 0.5f, 0.75f);
+        }
+
+
+        private static List<Circle> MergeSimilarCircles(List<Circle> circles,double centerDistanceThreshold =5f)
         {
             List<Circle> mergedCircles = new List<Circle>();
             List<bool> processed = new List<bool>(new bool[circles.Count]);

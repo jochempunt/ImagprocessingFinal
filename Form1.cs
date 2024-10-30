@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
+using static INFOIBV.CircleDetectorHough;
 
 
 namespace INFOIBV
@@ -229,6 +230,7 @@ namespace INFOIBV
 
                     // do a floodFill to fill out connected edes into regions
                     byte[,] solidRegions = Regions.FloodFillSolid(closedEdge);
+                    
                     // clean up noise and fill small holes
                     //byte[,] cleanedRegions = Morphology.Close(regionsFilled, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
                     byte[,] cleanedRegions = Morphology.Open(solidRegions, Morphology.ElementShape.Plus, 9, Morphology.ImageType.Binary);
@@ -263,6 +265,7 @@ namespace INFOIBV
                     Console.WriteLine(" found card shapes: " + potentialCardRegions.Count);
 
                     Color[,] cardRegionImg = Regions.DrawRegions(potentialCardRegions, height, width);
+                   
                     List<Byte[,]> rotatedCards = new List<Byte[,]>();
                     List<OrientedBoundingBox> obbs = new List<OrientedBoundingBox>();
                     List<Region> refinedCardRegions = new List<Region>();
@@ -279,9 +282,9 @@ namespace INFOIBV
                             if (aspectR > 1.1 && aspectR <= 1.7)
                             {
                                 obbs.Add(minBoundingBox);
-                                rotatedCards.Add(BoundingShapeAnalyser.RotateRegionToUpright(potentialCardRegions[i], grayScale , minBoundingBox));
+                                rotatedCards.Add(BoundingShapeAnalyser.RotateRegionToUpright(grayScale, minBoundingBox));
                                 refinedCardRegions.Add(potentialCardRegions[i]);
-                                BoundingShapeAnalyser.DrawMinAreaRect(workingImage, minBoundingBox, Color.Red);
+                                BoundingShapeAnalyser.DrawBoundingBox(workingImage, minBoundingBox, Color.Red);
                             }
                         }
                     }
@@ -293,41 +296,86 @@ namespace INFOIBV
                     for (int j = 0; j < rotatedCards.Count; j++)
                     {
                         byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(rotatedCards[j], 127);
+                        thresholdedCardRegion = Morphology.Close(thresholdedCardRegion, Morphology.ElementShape.Plus, 11, Morphology.ImageType.Binary);
                         thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
                         thresholdedCards.Add(thresholdedCardRegion);
                     }
 
+                    double MIN_HEARTBOX_AREA = 225; // if its smaller then 15x16 pixels we are probably not going to detect any pixels;
 
-                   
                     List<Region> heartSymbolss = new List<Region>();
-                    for (int i = 0; i <thresholdedCards.Count  ;i++)
+
+
+                    List<Region> finalHeartCards = new List<Region>();
+
+
+                    List<byte[,]> finalRegions = new List<byte[,]>();
+                    int index = 0;
+
+                    for (int i = 0; i < thresholdedCards.Count; i++)
                     {
                         List<Region> potentialSymbols = Regions.FindRegions(thresholdedCards[i]);
+
                         //if not a heart symbol continue, if a heart symbol save this card, and make sure u keep the index of the "refinedRegions"
                         // then finally output a list with all cardRegions that do have atleast one heart in them.
-
-                        foreach(Region pSymbol in potentialSymbols)
+                        Console.WriteLine("for card: " + i + " found " + potentialSymbols.Count + " symbols");
+                        foreach (Region pSymbol in potentialSymbols)
                         {
-                          
-                            
+                            AxisAlignedBoundingBox aabb = BoundingShapeAnalyser.GetAABB(pSymbol.OuterContour);
+                            Console.WriteLine($"aabb area: {aabb.Area} should be between {refinedCardRegions[i].Area * 0.7} and {refinedCardRegions[i].Area * 0.005}");
 
+                            if (aabb.Area < refinedCardRegions[i].Area * 0.7 && aabb.Area > refinedCardRegions[i].Area * 0.01 && aabb.Area > MIN_HEARTBOX_AREA)
+                            {
+                                // color refinement
+                                double area_filled = pSymbol.Area / aabb.Area;
+                                Console.WriteLine("--> filled area = " + area_filled);
+
+                                if (area_filled > 0.5)
+                                {
+                                    byte[,] boundBoxContent = BoundingShapeAnalyser.ExtractAABBContent(rotatedCards[i], aabb);
+                                    
+                                    
+
+                                    List<CircleDetectorHough.Circle> circles = CircleDetectorHough.findCircles(boundBoxContent);
+                                    List<CircleDetectorHough.Circle> sortedCircles = circles.OrderBy(c => c.CenterY).ToList();
+                                    foreach (var circle in sortedCircles)
+                                    {
+                                        Console.WriteLine("Circle at X: {0}, Y: {1}, Radius: {2}", circle.CenterX, circle.CenterY, circle.Radius);
+                                    }
+
+                                  
+                                    if (sortedCircles.Count > 0)
+                                    {
+                                        if (heartShapeDetector.isHeartBasedOnCircles(aabb, sortedCircles))
+                                        {
+                                            finalRegions.Add(boundBoxContent);
+                                            //
+                                        }
+                                    }
+                                  
+                                    if (index == 2)
+                                    {
+                                        //return CircleDetectorHough.DrawCircles(circles, ImageConverter.ToColorImage(boundBoxContent));
+                                        
+                                    }
+
+                                    index++;
+                                }
+
+
+                            }
                         }
+                        Console.WriteLine($"regions in card: {finalRegions.Count}");
+                        //return Regions.DrawRegions(potentialSymbols, rotatedCards[i].GetLength(0), rotatedCards[i].GetLength(1));
+                       
 
+                        //return ImageConverter.ToColorImage(thresholdedCards[0]);
                     }
-
-                    Console.WriteLine("-----> hearts found total:" + heartSymbolss.Count);
-                    
-                    Color[,] cardImg2 = Regions.DrawRegions(refinedCardRegions, height, width);
-
-                 
-                    //return cardImg2;
+                    return Regions.DrawRegions(potentialCardRegions, height, width);
                     return ImageConverter.ToColorImage(rotatedCards[0]);
+
                 case ProcessingFunctions.DetectCircles:
-                    byte[,] Symboledges = EdgeDetector.detectEdgesCanny(grayScale, 40, 130, 0.5f, 3);
-                    float minRadius = (int)Math.Round(Math.Sqrt(width * height) * 0.15);
-                    float maxRadius = (int)Math.Round(Math.Sqrt(width * height) * 0.25);
-                    Console.WriteLine(" min and max radi (" + minRadius + "," + maxRadius + ")");
-                    List<CircleDetectorHough.Circle> foundCircles = CircleDetectorHough.DetectCircles(Symboledges, 3, maxRadius, 1f, 0.75f);
+                    List<CircleDetectorHough.Circle> foundCircles = CircleDetectorHough.findCircles(grayScale);
                     return CircleDetectorHough.DrawCircles(foundCircles, workingImage);
                 default:
                     return null;

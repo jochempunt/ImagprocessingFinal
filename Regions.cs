@@ -56,7 +56,7 @@ namespace INFOIBV
         public double Elongation { get; set; }
 
 
-        public List<(int y, int x)> convexHull;
+        
 
         /// <summary>
         /// Creates a new region with the given label
@@ -73,7 +73,6 @@ namespace INFOIBV
             CentralMoments = (0, 0, 0);
             Centroid = (0, 0);
             Elongation = 0;
-            convexHull = new List<(int Y, int X)>();
         }
     }
 

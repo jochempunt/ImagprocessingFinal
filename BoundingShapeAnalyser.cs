@@ -6,11 +6,10 @@ namespace INFOIBV
 {
 
 
-    public class OrientedBoundingBox
+    public class AxisAlignedBoundingBox
     {
         public double Width { get; set; }
         public double Height { get; set; }
-        public double Angle { get; set; }  // in degrees
         public (int Y, int X) Center { get; set; }
 
         public double Area
@@ -24,38 +23,50 @@ namespace INFOIBV
         }
     }
 
+    public class OrientedBoundingBox : AxisAlignedBoundingBox
+    {
+        public double Angle { get; set; }  // in degrees
+    }
+
 
 
     public class BoundingShapeAnalyser
     {
 
-
-        public static void DrawMinAreaRect(Color[,] image, OrientedBoundingBox rect, Color color)
+        /// <summary>
+        /// Draws bounding box, allows to draw oriented but also axis aligned bounding boxes
+        /// </summary>
+        /// <param name="image"></param>
+        /// <param name="box"></param>
+        /// <param name="color"></param>
+        public static void DrawBoundingBox(Color[,] image, AxisAlignedBoundingBox box, Color color)
         {
-            // calculate four corners of the rectangle
-            double halfWidth = rect.Width / 2;
-            double halfHeight = rect.Height / 2;
-
+            // Calculate four corners of the rectangle
+            double halfWidth = box.Width / 2;
+            double halfHeight = box.Height / 2;
             (double Y, double X)[] corners = new (double Y, double X)[]
             {
-            (-halfHeight, -halfWidth),  // top leftt
+            (-halfHeight, -halfWidth),  // top left
             (-halfHeight, halfWidth),   // top right
             (halfHeight, halfWidth),    // bottom right
             (halfHeight, -halfWidth)    // bottom left
             };
 
-            // totate corners and translate to center position
+            // Get the angle - 0 for AABB, specified angle for OBB
+            double angle = (box is OrientedBoundingBox obb) ? -obb.Angle : 0;
+
+            // Rotate corners and translate to center position
             (int Y, int X)[] rotatedCorners = new (int Y, int X)[4];
             for (int i = 0; i < 4; i++)
             {
-                (int Y, int X) rotated = RotatePoint(corners[i].Y, corners[i].X, -rect.Angle);
+                (int Y, int X) rotated = RotatePoint(corners[i].Y, corners[i].X, angle);
                 rotatedCorners[i] = (
-                    Y: rotated.Y + rect.Center.Y,
-                    X: rotated.X + rect.Center.X
+                    Y: rotated.Y + box.Center.Y,
+                    X: rotated.X + box.Center.X
                 );
             }
 
-            // draw lines between corners
+            // Draw lines between corners
             for (int i = 0; i < 4; i++)
             {
                 int nextIndex = (i + 1) % 4;
@@ -68,13 +79,11 @@ namespace INFOIBV
             }
         }
 
-        //using bresenhams line algorithm
+
         private static void DrawLine(Color[,] image, int x0, int y0, int x1, int y1, Color color)
         {
             int imageHeight = image.GetLength(0);
             int imageWidth = image.GetLength(1);
-
-
             int dx = Math.Abs(x1 - x0);
             int dy = Math.Abs(y1 - y0);
             int sx = x0 < x1 ? 1 : -1;
@@ -105,17 +114,46 @@ namespace INFOIBV
             }
         }
 
+        public static AxisAlignedBoundingBox GetAABB(List<(int Y, int X)> outerContour)
+        {
+            if (outerContour == null || outerContour.Count == 0)
+                throw new ArgumentException("Contour cannot be null or empty");
+
+            int minX = int.MaxValue;
+            int maxX = int.MinValue;
+            int minY = int.MaxValue;
+            int maxY = int.MinValue;
+
+            foreach (var point in outerContour)
+            {
+                minX = Math.Min(minX, point.X);
+                maxX = Math.Max(maxX, point.X);
+                minY = Math.Min(minY, point.Y);
+                maxY = Math.Max(maxY, point.Y);
+            }
+
+            return new AxisAlignedBoundingBox
+            {
+                Width = maxX - minX,
+                Height = maxY - minY,
+                Center = ((minY + maxY) / 2, (minX + maxX) / 2)
+            };
+        }
+
         public static OrientedBoundingBox GetMinOBBox(List<(int Y, int X)> contour)
         {
+            if (contour == null || contour.Count == 0)
+                throw new ArgumentException("Contour cannot be null or empty");
+
             OrientedBoundingBox minRect = new OrientedBoundingBox();
             double minArea = double.MaxValue;
 
             for (double angle = 0; angle < 90; angle += 0.5)
             {
                 List<(int Y, int X)> rotatedPoints = new List<(int Y, int X)>();
-                foreach ((int Y, int X) point in contour)
+                for (int i = 0; i < contour.Count; i++)
                 {
-                    rotatedPoints.Add(RotatePoint(point.Y, point.X, angle));
+                    rotatedPoints.Add(RotatePoint(contour[i].Y, contour[i].X, angle));
                 }
 
                 int minX = int.MaxValue;
@@ -123,8 +161,9 @@ namespace INFOIBV
                 int minY = int.MaxValue;
                 int maxY = int.MinValue;
 
-                foreach ((int Y, int X) point in rotatedPoints)
+                for (int i = 0; i < rotatedPoints.Count; i++)
                 {
+                    var point = rotatedPoints[i];
                     if (point.X < minX) minX = point.X;
                     if (point.X > maxX) maxX = point.X;
                     if (point.Y < minY) minY = point.Y;
@@ -141,10 +180,7 @@ namespace INFOIBV
                     minRect.Width = width;
                     minRect.Height = height;
                     minRect.Angle = angle;
-
-                    int centerY = (minY + maxY) / 2;
-                    int centerX = (minX + maxX) / 2;
-                    minRect.Center = RotatePoint(centerY, centerX, -angle);
+                    minRect.Center = RotatePoint((minY + maxY) / 2, (minX + maxX) / 2, -angle);
                 }
             }
 
@@ -169,7 +205,7 @@ namespace INFOIBV
         }
 
 
-        public static byte[,] RotateRegionToUpright(Region region, byte[,] sourceImage, OrientedBoundingBox boundingBox)
+        public static byte[,] RotateRegionToUpright(byte[,] sourceImage, OrientedBoundingBox boundingBox)
         {
             var (centerY, centerX) = boundingBox.Center;
             double angleDegrees = -boundingBox.Angle;
@@ -225,15 +261,52 @@ namespace INFOIBV
             return rotatedRegionImage;
         }
 
+
+        public static byte[,] ExtractAABBContent(byte[,] sourceImage, AxisAlignedBoundingBox boundingBox, double paddingRatio = 0.06f)
+        {
+            int originalWidth = sourceImage.GetLength(1);
+            int originalHeight = sourceImage.GetLength(0);
+
+            // Calculate padding amounts
+            float widthPadding =(float) (boundingBox.Width * paddingRatio);
+            float heightPadding = (float)(boundingBox.Height * paddingRatio);
+
+            // Get the dimensions of the padded bounding box
+            int newWidth = (int)(boundingBox.Width + 2 * widthPadding);
+            int newHeight = (int)(boundingBox.Height + 2 * heightPadding);
+
+            // Calculate the top-left corner from the center, including padding
+            int startY = (int)(boundingBox.Center.Y - (boundingBox.Height / 2 + heightPadding));
+            int startX = (int)(boundingBox.Center.X - (boundingBox.Width / 2 + widthPadding));
+
+            // Create the output image with the padded size
+            byte[,] extractedContent = new byte[newHeight, newWidth];
+
+            // Copy the pixels from the source image to the new image
+            for (int y = 0; y < newHeight; y++)
+            {
+                for (int x = 0; x < newWidth; x++)
+                {
+                    int sourceY = startY + y;
+                    int sourceX = startX + x;
+
+                    // Check if we're within the bounds of the source image
+                    if (sourceX >= 0 && sourceX < originalWidth &&
+                        sourceY >= 0 && sourceY < originalHeight)
+                    {
+                        extractedContent[y, x] = sourceImage[sourceY, sourceX];
+                    }
+                }
+            }
+
+            return extractedContent;
+        }
+
+
         private static byte BilinearInterpolation(byte p11, byte p12, byte p21, byte p22, double wx, double wy)
         {
             return (byte)((1 - wx) * ((1 - wy) * p11 + wy * p21) + wx * ((1 - wy) * p12 + wy * p22));
         }
-
-
-
-
-
 
     }
 }
