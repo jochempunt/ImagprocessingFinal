@@ -39,11 +39,12 @@ namespace INFOIBV
                         if ((hue >= 0 && hue <= maxRedHue) || (hue >= minRedHue && hue <= 360))
                         {
                             redThresh += 1;
-                            if (redThresh / regionG.Pixels.Count > 0.5)
-                                isRed = true;
+                            
                         }
                     }
                 }
+            if (redThresh / regionG.Pixels.Count > 0.80)
+                isRed = true;
             return isRed;
         }
           
