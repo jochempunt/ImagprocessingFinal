@@ -39,7 +39,7 @@ namespace INFOIBV
         /// <param name="image"></param>
         /// <param name="box"></param>
         /// <param name="color"></param>
-        public static void DrawBoundingBox(Color[,] image, AxisAlignedBoundingBox box, Color color)
+        public static void DrawBoundingBox(Color[,] image, AxisAlignedBoundingBox box, Color color, int thickness)
         {
             // Calculate four corners of the rectangle
             double halfWidth = box.Width / 2;
@@ -74,13 +74,14 @@ namespace INFOIBV
                     image,
                     rotatedCorners[i].X, rotatedCorners[i].Y,
                     rotatedCorners[nextIndex].X, rotatedCorners[nextIndex].Y,
-                    color
+                    color,
+                    thickness
                 );
             }
         }
 
 
-        private static void DrawLine(Color[,] image, int x0, int y0, int x1, int y1, Color color)
+        private static void DrawLine(Color[,] image, int x0, int y0, int x1, int y1, Color color, int thickness = 2)
         {
             int imageHeight = image.GetLength(0);
             int imageWidth = image.GetLength(1);
@@ -90,16 +91,27 @@ namespace INFOIBV
             int sy = y0 < y1 ? 1 : -1;
             int err = dx - dy;
 
+            
+
             while (true)
             {
-                // Only draw if point is within image bounds
-                if (y0 >= 0 && y0 < imageHeight && x0 >= 0 && x0 < imageWidth)
+                // Draw a small square around each point to create thickness
+                for (int offsetY = -thickness / 2; offsetY <= thickness / 2; offsetY++)
                 {
-                    image[y0, x0] = color;
+                    for (int offsetX = -thickness / 2; offsetX <= thickness / 2; offsetX++)
+                    {
+                        int newY = y0 + offsetY;
+                        int newX = x0 + offsetX;
+
+                        // Only draw if point is within image bounds
+                        if (newY >= 0 && newY < imageHeight && newX >= 0 && newX < imageWidth)
+                        {
+                            image[newY, newX] = color;
+                        }
+                    }
                 }
 
                 if (x0 == x1 && y0 == y1) break;
-
                 int e2 = 2 * err;
                 if (e2 > -dy)
                 {
