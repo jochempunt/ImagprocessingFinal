@@ -70,7 +70,7 @@ namespace INFOIBV
             Console.WriteLine($"min and max radi: ({minRadiusArithmetic}, {maxRadiusArithmetic})");
 
 
-            return CircleDetectorHough.DetectCircles(SymbolEdges, minRadiusArithmetic, maxRadiusArithmetic, 0.5f, 0.75f);
+            return CircleDetectorHough.DetectCircles(SymbolEdges, minRadiusArithmetic, maxRadiusArithmetic, 0.5f, 0.8f);
         }
 
 

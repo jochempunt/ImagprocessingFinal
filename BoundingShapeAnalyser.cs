@@ -205,11 +205,10 @@ namespace INFOIBV
         }
 
 
-        public static byte[,] RotateRegionToUpright(byte[,] sourceImage, OrientedBoundingBox boundingBox)
+        public static Color[,] RotateRegionToUpright(Color[,] sourceImage, OrientedBoundingBox boundingBox)
         {
             var (centerY, centerX) = boundingBox.Center;
             double angleDegrees = -boundingBox.Angle;
-
             // Determine if we need an additional 90° rotation to make longer side vertical
             bool needsAdditional90 = boundingBox.Width > boundingBox.Height;
             if (needsAdditional90)
@@ -219,11 +218,11 @@ namespace INFOIBV
 
             int originalWidth = sourceImage.GetLength(1);
             int originalHeight = sourceImage.GetLength(0);
-
             // If we did a 90° rotation, swap width and height
             int newHeight = (int)(needsAdditional90 ? boundingBox.Width : boundingBox.Height);
             int newWidth = (int)(needsAdditional90 ? boundingBox.Height : boundingBox.Width);
-            byte[,] rotatedRegionImage = new byte[newHeight, newWidth];
+
+            Color[,] rotatedRegionImage = new Color[newHeight, newWidth];
 
             for (int newY = 0; newY < newHeight; newY++)
             {
@@ -231,9 +230,7 @@ namespace INFOIBV
                 {
                     double relativeY = newY - (newHeight / 2.0);
                     double relativeX = newX - (newWidth / 2.0);
-
                     var (rotatedY, rotatedX) = RotatePoint(relativeY, relativeX, angleDegrees);
-
                     double sourceY = rotatedY + centerY;
                     double sourceX = rotatedX + centerX;
 
@@ -244,20 +241,23 @@ namespace INFOIBV
                         int y1 = (int)Math.Floor(sourceY);
                         int x2 = x1 + 1;
                         int y2 = y1 + 1;
-
                         double wx = sourceX - x1;
                         double wy = sourceY - y1;
 
-                        byte p11 = sourceImage[y1, x1];
-                        byte p12 = sourceImage[y1, x2];
-                        byte p21 = sourceImage[y2, x1];
-                        byte p22 = sourceImage[y2, x2];
+                        Color p11 = sourceImage[y1, x1];
+                        Color p12 = sourceImage[y1, x2];
+                        Color p21 = sourceImage[y2, x1];
+                        Color p22 = sourceImage[y2, x2];
 
                         rotatedRegionImage[newY, newX] = BilinearInterpolation(p11, p12, p21, p22, wx, wy);
                     }
+                    else
+                    {
+                        // set transparent for out ofbounds pixels
+                        rotatedRegionImage[newY, newX] = Color.Transparent;
+                    }
                 }
             }
-
             return rotatedRegionImage;
         }
 
@@ -303,10 +303,63 @@ namespace INFOIBV
         }
 
 
-        private static byte BilinearInterpolation(byte p11, byte p12, byte p21, byte p22, double wx, double wy)
+        private static Color BilinearInterpolation(Color p11, Color p12, Color p21, Color p22, double wx, double wy)
         {
-            return (byte)((1 - wx) * ((1 - wy) * p11 + wy * p21) + wx * ((1 - wy) * p12 + wy * p22));
+            // Interpolate each channel separately
+            byte r = BilinearInterpolateChannel(p11.R, p12.R, p21.R, p22.R, wx, wy);
+            byte g = BilinearInterpolateChannel(p11.G, p12.G, p21.G, p22.G, wx, wy);
+            byte b = BilinearInterpolateChannel(p11.B, p12.B, p21.B, p22.B, wx, wy);
+            
+
+            return Color.FromArgb(r, g, b);
         }
 
+        private static byte BilinearInterpolateChannel(byte c11, byte c12, byte c21, byte c22, double wx, double wy)
+        {
+            return (byte)((1 - wx) * ((1 - wy) * c11 + wy * c21) + wx * ((1 - wy) * c12 + wy * c22));
+        }
+
+
+        public static Color[,] ScaleImageBilinear(Color[,] sourceImage, int newWidth, int newHeight)
+        {
+            int originalWidth = sourceImage.GetLength(1);
+            int originalHeight = sourceImage.GetLength(0);
+
+            Color[,] scaledImage = new Color[newHeight, newWidth];
+
+            // Calculate scaling ratios
+            double xRatio = (double)(originalWidth - 1) / newWidth;
+            double yRatio = (double)(originalHeight - 1) / newHeight;
+
+            for (int y = 0; y < newHeight; y++)
+            {
+                for (int x = 0; x < newWidth; x++)
+                {
+                    // Calculate corresponding source coordinates
+                    double gx = x * xRatio;
+                    double gy = y * yRatio;
+
+                    int x1 = (int)gx;
+                    int y1 = (int)gy;
+                    int x2 = Math.Min(x1 + 1, originalWidth - 1);
+                    int y2 = Math.Min(y1 + 1, originalHeight - 1);
+
+                    // Calculate weights for interpolation
+                    double wx = gx - x1;
+                    double wy = gy - y1;
+
+                    // Perform bilinear interpolation using existing method
+                    Color interpolatedColor = BilinearInterpolation(
+                        sourceImage[y1, x1], sourceImage[y1, x2],
+                        sourceImage[y2, x1], sourceImage[y2, x2],
+                        wx, wy);
+
+                    // Set the interpolated color in the scaled image
+                    scaledImage[y, x] = interpolatedColor;
+                }
+            }
+
+            return scaledImage;
+        }
     }
 }
