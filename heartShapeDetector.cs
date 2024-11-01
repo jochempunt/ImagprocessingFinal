@@ -13,9 +13,9 @@ namespace INFOIBV
         private const int MAX_CIRCLES_FOR_HEART = 3;
 
         private const float MAX_CIRCLE_OVERLAP_RATIO = 0.2f;  // how much circles can overlap
-        private const float MAX_CIRCLE_SEPARATION_RATIO = 0.3f;
+        private const float MAX_CIRCLE_SEPARATION_RATIO = 0.3f; // max distance between circles
 
-        private const float MAX_VERTICAL_OFFSET_RATIO = 0.1f;  // maximum allowed vertical misalignment between circles
+        private const float MAX_VERTICAL_OFFSET_RATIO = 0.1f;  // maximum allowed y axis misalignment between circles
         public static bool isHeartBasedOnCircles(AxisAlignedBoundingBox aabb, List<CircleDetectorHough.Circle> circles)
         {
             if (circles.Count < MIN_CIRCLES_FOR_HEART || circles.Count > MAX_CIRCLES_FOR_HEART) return false;

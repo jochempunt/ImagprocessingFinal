@@ -4,8 +4,6 @@ using System;
 
 namespace INFOIBV
 {
-
-
     public class AxisAlignedBoundingBox
     {
         public double Width { get; set; }

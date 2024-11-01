@@ -245,7 +245,7 @@ namespace INFOIBV
 
                 for (int i = 0; i < 8; i++)
                 {
-                    newDirection = (direction + 6 + i) % 8; // Search counter-clockwise
+                    newDirection = (direction + 6 + i) % 8; // search counter-clockwise
                     int newY = current.Y + Directions[newDirection].Y;
                     int newX = current.X + Directions[newDirection].X;
 
