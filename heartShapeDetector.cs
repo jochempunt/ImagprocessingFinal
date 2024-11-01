@@ -9,22 +9,27 @@ namespace INFOIBV
 {
     internal class heartShapeDetector
     {
+        private const int MIN_CIRCLES_FOR_HEART = 2;
+        private const int MAX_CIRCLES_FOR_HEART = 3;
+
+        private const float MAX_CIRCLE_OVERLAP_RATIO = 0.2f;  // how much circles can overlap
+        private const float MAX_CIRCLE_SEPARATION_RATIO = 0.3f;
+
+        private const float MAX_VERTICAL_OFFSET_RATIO = 0.1f;  // maximum allowed vertical misalignment between circles
         public static bool isHeartBasedOnCircles(AxisAlignedBoundingBox aabb, List<CircleDetectorHough.Circle> circles)
         {
-            if (circles.Count < 2 || circles.Count > 3) return false;
+            if (circles.Count < MIN_CIRCLES_FOR_HEART || circles.Count > MAX_CIRCLES_FOR_HEART) return false;
+
             int Xdistance = Math.Abs((circles[0].CenterX - circles[1].CenterX)) - (circles[0].Radius + circles[1].Radius);
-            int minOverlapDistance = -(int)(0.2 * (circles[0].Radius + circles[1].Radius)); // Small overlap allowed
-            int maxProximityDistance = (int)(0.3 * (circles[0].Radius + circles[1].Radius)); // Maximum allowed distance
+            int minOverlapDistance = -(int)(MAX_CIRCLE_OVERLAP_RATIO * (circles[0].Radius + circles[1].Radius)); // Small overlap allowed
+            int maxProximityDistance = (int)(MAX_CIRCLE_SEPARATION_RATIO * (circles[0].Radius + circles[1].Radius)); // Maximum allowed distance
             int Ydistance = Math.Abs((circles[0].CenterY - circles[1].CenterY));
 
-            int maxYdistance = (int)Math.Round(aabb.Height * 0.1);
-            Console.WriteLine($"proximitiy of circle 1 and 2: height= {Ydistance} & width= {Xdistance} ");
-            Console.WriteLine($"max overlap distance= {minOverlapDistance} & max proximity distance= {maxProximityDistance} ");
+            int maxYdistance = (int)Math.Round(aabb.Height * MAX_VERTICAL_OFFSET_RATIO);
             int topAlignment = (int)Math.Round(aabb.Height / 2);
-            Console.WriteLine($"top alignment= {topAlignment} & max Y distance= {maxYdistance} ");
 
             if (circles.Count == 3 && circles[2].CenterY <= topAlignment) return false;
-        
+
 
             if (circles[0].CenterY < topAlignment && circles[1].CenterY < topAlignment)
             {

@@ -10,46 +10,37 @@ namespace INFOIBV
 {
     internal class ColorComparison
     {
+        const double MIN_RED_HUE = 340;
+        const double MAX_RED_HUE = 40;
+        const double MIN_SATURATION = 0.2;
+        const double RED_THRESHOLD = 0.8;
         public static bool isRedColor(Region regionG, Color[,] colourImage)
         {
-            // Define the RGB thresholds and hue range for identifying "red"
-            const double minRedHue = 340;          // Minimum hue for red (in degrees)
-            const double maxRedHue = 40;           // Maximum hue for red (in degrees)
-
             bool isRed = false;
-            double redThresh = 0;
-            const double minSaturation = 0.2;
-
+            double redPixels = 0;
+            
             foreach ((int y, int x) in regionG.Pixels)
-            {
-                // Access the color image at (x, y)
-                byte red = colourImage[y, x].R;        // Red channel
-                byte green = colourImage[y, x].G;  // Green channel
-                byte blue = colourImage[y, x].B;   // Blue channel
+            {    
+                byte red = colourImage[y, x].R;      
+                byte green = colourImage[y, x].G; 
+                byte blue = colourImage[y, x].B;   
 
-                // Check if the pixel meets basic RGB "red" thresholds
-
-                // Use RGBtoHSV to get hue, saturation, and value
                 var (hue, saturation, value) = RGBtoHSV(red, green, blue);
 
-                // Check if hue is within red range (either between 0-20 or 340-360)
-                if (saturation > minSaturation)
+                if (saturation > MIN_SATURATION)
                 {
 
-                    if ((hue >= 0 && hue <= maxRedHue) || (hue >= minRedHue && hue <= 360))
+                    if ((hue >= 0 && hue <= MAX_RED_HUE) || (hue >= MIN_RED_HUE && hue <= 360))
                     {
-                        redThresh += 1;
-
+                        redPixels += 1;
                     }
                 }
 
 
             }
 
-            double colorAvg = redThresh / regionG.Pixels.Count;
-            Console.WriteLine("-------------------");
-            Console.WriteLine(" -- color avg for red is = " + colorAvg + " redthresh = " + redThresh);
-            if (colorAvg > 0.80)
+            double colorAvg = redPixels / regionG.Pixels.Count;
+            if (colorAvg > RED_THRESHOLD)
             {
                 isRed = true;
             }

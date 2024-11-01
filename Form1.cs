@@ -40,18 +40,39 @@ namespace INFOIBV
 
 
 
-        /*
-         * these are the parameters for your processing functions, you should add more as you see fit
-         * it is useful to set them based on controls such as sliders, which you can add to the form
-         */
-        private byte filterSize = 3;
-        private float filterSigma = 2f;
-        private byte threshold = 127;
+        #region Global Parameters
+        // preprocessing - edge detection and morphology
+        byte LOW_CANNY_THRESHOLD = 50;
+        byte HIGH_CANNY_THRESHOLD = 150;
+        float SIGMA_GAUSSIAN_CANNY = 1.4f;
+        int KERNEL_SIZE_GAUSSIAN_CANNY = 5;
+        int EDGE_CONNECTING_KERNELSIZE = 3;
+        int REGION_CLEANING_KERNELSIZE = 9;
+
+        //Card detection
+        float MIN_AREA_SCALE_CARD = 0.01f;
+        float MAX_AREA_SCALE_CARD = 0.3f; 
+        float MIN_ELONGATION_CARD = 1.15f;
+        float MAX_ELONGATION_CARD = 1.7f;
+        float MIN_CIRCULARITY_CARD = 0.45f;
+        float MAX_CIRCULARITY_CARD = 0.85f;
+        float MIN_ASPECTRATIO_CARD = 1.1f;
+        float MAX_ASPECTRATIO_CARD = 1.7f;
+
+        float MIN_RECTANGULARITY_CARD = 0.8f; // area / bounding box area = rectangularity
+        int MIN_WIDTH_CARD_PX = 300;
+
+        // refinement
+        byte SYMBOL_THRESHOLD = 126;
+        float MIN_HEART_SCALE = 0.005f;
+        float MAX_HEART_SCALE = 0.7f;
+        int MIN_HEARTBOX_AREA_PX = 200;
+        float MIN_SYMBOL_AREA_RATIO = 0.4f;
 
 
 
+        #endregion
 
-        private string filterform = "Square";
 
 
 
@@ -173,18 +194,6 @@ namespace INFOIBV
          */
         private Color[,] ProcessImage(Color[,] workingImage)
         {
-            //Plan:
-            // 1. Preprocessing (Get rid of noise, adjust contrast, deal with ligthing
-            // 2. Thresholding (so far not adaptive) and using morphology to close the smalles gaps
-            // 3. region finding, and working out which are more likely to be rectangles/cards
-            // 4. using the found regions as ROIs (Regions of interest) and thresholding (adaptive) again evtl edge detections
-            // 5. checking these regions  evtl. if they match specific shapes, colors, and counting the "same size" ones if frequent.
-            // 6. outputting final image with cards (of a specific type) in a bounding box, and evtl. output their card value
-
-            // tools we havent considered yet but could use: hough line or circle detection, histogramm functions, broad (harris) corner detection...
-            // things we´still need to do: collect images (at least ten maybe more) and distractor images
-            // clear which angles we want to cover (rotation/perspective wise) and if cards are partially overlayd by sth etc.
-            // write consize report on this (4-5 pages)
             int height = workingImage.GetLength(0);
             int width = workingImage.GetLength(1);
             byte[,] grayScale = ImageConverter.ToGrayscale(workingImage);
@@ -226,7 +235,7 @@ namespace INFOIBV
                 case ProcessingFunctions.FindHeartCards:
                     byte[,] adj = Preprocessor.adjustContrast(grayScale);
 
-                    //byte[,] blurred = Preprocessor.applyGaussianFilter(grayScale, 2f, 13);
+                    
                     byte[,] edge = EdgeDetector.detectEdgesCanny(adj, 50, 150, 1.4f, 5);
 
                     // 2. Dilate edges slightly to connect small gaps
@@ -239,17 +248,18 @@ namespace INFOIBV
                     byte[,] solidRegions = Regions.FloodFillSolid(closedEdge);
 
                     // clean up noise and fill small holes
-                    //byte[,] cleanedRegions = Morphology.Close(regionsFilled, Morphology.ElementShape.Square, 3, Morphology.ImageType.Binary);
                     byte[,] cleanedRegions = Morphology.Open(solidRegions, Morphology.ElementShape.Plus, 9, Morphology.ImageType.Binary);
                     List<Region> regions = Regions.FindRegions(cleanedRegions);
                     Console.WriteLine($"Total number of regions: {regions.Count}");
 
-                    Console.WriteLine("min area: " + (width * height) / 30);
-                    Console.WriteLine("max area: " + (width * height) / 3);
+                    int imageArea = (width * height);
+
+                    Console.WriteLine("min area: " +  imageArea *MIN_AREA_SCALE_CARD);
+                    Console.WriteLine("max area: " + imageArea  *MAX_AREA_SCALE_CARD);
 
                     foreach (Region region in regions)
                     {
-                        if (region.Area >= 2000)
+                        if (region.Area >= imageArea * MIN_AREA_SCALE_CARD && region.Area <= imageArea * MIN_AREA_SCALE_CARD)
                         {
                             Console.WriteLine($"Region {region.Label} Area: {region.Area} Perimeter: {region.Perimeter}");
                             Console.WriteLine($"| Circularity: {region.Circularity} Elongation: {region.Elongation} Centroid: {region.Centroid}");
@@ -261,12 +271,12 @@ namespace INFOIBV
 
                     // Filter regions based on card-like properties
                     List<Region> potentialCardRegions = regions.Where(r =>
-                        r.Area >= (width * height) / 100 &&  // min  size
-                        r.Area <= (width * height) / 3 &&   // max size
-                        r.Elongation > 1.15 &&               // cards are rectangular (so elongated)
-                        r.Elongation < 1.7 &&     // Not too elongated
-                        r.Circularity > 0.45 &&
-                        r.Circularity < 0.85              // Reasonably rectangular shape
+                        r.Area >= imageArea* MIN_AREA_SCALE_CARD &&           // min  size
+                        r.Area <= imageArea * MAX_AREA_SCALE_CARD &&         // max size
+                        r.Elongation > MIN_ELONGATION_CARD &&               // cards are rectangular (so elongated)
+                        r.Elongation < MAX_ELONGATION_CARD &&              // Not too elongated
+                        r.Circularity > MIN_CIRCULARITY_CARD &&
+                        r.Circularity < MAX_CIRCULARITY_CARD             // Reasonably rectangular shape
 
                     ).ToList();
                     Console.WriteLine(" found card shapes: " + potentialCardRegions.Count);
@@ -276,7 +286,6 @@ namespace INFOIBV
 
 
                     // refinement
-                    int MIN_HEARTBOX_AREA = 100; // if size is smaller then 15x15 then its defo not getting detected
                     List<DetectedCard> detectedCards = new List<DetectedCard>();
 
                     for (int i = 0; i < potentialCardRegions.Count; i++)
@@ -286,25 +295,25 @@ namespace INFOIBV
                         Console.WriteLine($"Region: {potentialCardRegions[i].Label}, Bounding Box Ratio: {areaBoundingRatio}");
                         Console.WriteLine($"angle: {minBoundingBox.Angle}, {minBoundingBox.AspectRatio}");
 
-                        if (areaBoundingRatio > 0.8)
+                        if (areaBoundingRatio > MIN_RECTANGULARITY_CARD)
                         {
                             double aspectR = Math.Round(minBoundingBox.AspectRatio, 2);
-                            if (aspectR > 1.1 && aspectR <= 1.7)
+                            if (aspectR > MIN_ASPECTRATIO_CARD && aspectR <= MAX_ASPECTRATIO_CARD)
                             {
                                 Color[,] colorCardUpright = BoundingShapeAnalyser.RotateRegionToUpright(workingImage, minBoundingBox);
                                 double cardRatio = ((double)colorCardUpright.GetLength(1)) / colorCardUpright.GetLength(0);
 
-                                if (colorCardUpright.GetLength(1) < 300)
+                                if (colorCardUpright.GetLength(1) < MIN_WIDTH_CARD_PX)
                                 {
                                     Console.WriteLine("---rescaled card--- ");
-                                    colorCardUpright = BoundingShapeAnalyser.ScaleImageBilinear(colorCardUpright, 300, (int)(300 * cardRatio));
+                                    colorCardUpright = BoundingShapeAnalyser.ScaleImageBilinear(colorCardUpright, MIN_WIDTH_CARD_PX, (int)(MIN_WIDTH_CARD_PX * cardRatio));
                                     // return ImageConverter.ToColorImage(grayscaleCardUpright);
                                 }
                                 byte[,] grayscaleCardUpright = ImageConverter.ToGrayscale(colorCardUpright);
 
 
                                 // Create thresholded version
-                                byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(grayscaleCardUpright, 126);
+                                byte[,] thresholdedCardRegion = Preprocessor.thresholdImage(grayscaleCardUpright, SYMBOL_THRESHOLD);
 
 
                                 thresholdedCardRegion = Preprocessor.InvertImage(thresholdedCardRegion);
@@ -335,15 +344,15 @@ namespace INFOIBV
                             AxisAlignedBoundingBox aabb = BoundingShapeAnalyser.GetAABB(pSymbol.OuterContour);
                             Console.WriteLine($"Card {cardIndex}, Symbol {symbolIndex}: Width={aabb.Width}, Height={aabb.Height}, Area={aabb.Area}");
 
-                            if (aabb.Area < card.Region.Area * 0.7 &&
-                                aabb.Area > card.Region.Area * 0.005 &&
-                                aabb.Area > MIN_HEARTBOX_AREA)
+                            if (aabb.Area < card.Region.Area * MAX_HEART_SCALE &&
+                                aabb.Area > card.Region.Area * MIN_HEART_SCALE &&
+                                aabb.Area > MIN_HEARTBOX_AREA_PX)
                             {
                                 double area_filled = pSymbol.Area / aabb.Area;
                                 Console.WriteLine($"Card {cardIndex}, Symbol {symbolIndex} --> filled area = {area_filled}");
 
 
-                                if (area_filled > 0.4)
+                                if (area_filled > MIN_SYMBOL_AREA_RATIO)
                                 {
 
                                     if (ColorComparison.isRedColor(pSymbol, card.ColorImage))
@@ -377,10 +386,10 @@ namespace INFOIBV
                     foreach (DetectedCard detectedCard in detectedCards)
                     {
                         Color boxColor = detectedCard.HasHeart ? Color.Red : Color.Blue; // Blue with 40% opacity
-                       
 
+                        int thickness = 2;
                         // Draw the bounding box on the working image
-                        BoundingShapeAnalyser.DrawBoundingBox(workingImage, detectedCard.BoundingBox, boxColor, 2);
+                        BoundingShapeAnalyser.DrawBoundingBox(workingImage, detectedCard.BoundingBox, boxColor, thickness);
                     }
                     //Console.WriteLine($"amount of heart cards detected = {heartCards.Count}");
                     return workingImage;

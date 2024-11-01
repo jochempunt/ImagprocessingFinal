@@ -56,7 +56,7 @@ namespace INFOIBV
         public double Elongation { get; set; }
 
 
-        
+
 
         /// <summary>
         /// Creates a new region with the given label
@@ -297,73 +297,28 @@ namespace INFOIBV
         }
 
 
+
+
         /// <summary>
-        /// fill contours and shape them into "regions" (doesnt label them yet)
+        /// fill outer contours, dont label regions yet, ignore inner contours
         /// </summary>
         /// <param name="edges"></param>
         /// <returns></returns>
-        public static byte[,] FloodFill(byte[,] edges)
-        {
-            int height = edges.GetLength(0);
-            int width = edges.GetLength(1);
-            byte[,] filled = new byte[height, width];
-            Array.Copy(edges, filled, edges.Length);
-
-            // Start flood fill from border pixels
-            Queue<(int y, int x)> queue = new Queue<(int y, int x)>();
-
-            // Add border pixels to queue
-            for (int x = 0; x < width; x++)
-            {
-                if (filled[0, x] == 0) queue.Enqueue((0, x));
-                if (filled[height - 1, x] == 0) queue.Enqueue((height - 1, x));
-            }
-            for (int y = 0; y < height; y++)
-            {
-                if (filled[y, 0] == 0) queue.Enqueue((y, 0));
-                if (filled[y, width - 1] == 0) queue.Enqueue((y, width - 1));
-            }
-
-            // Flood fill from borders
-            while (queue.Count > 0)
-            {
-                var (y, x) = queue.Dequeue();
-                if (filled[y, x] == 0)
-                {
-                    filled[y, x] = 255;  // Mark as background
-
-                    // Add neighboring pixels
-                    if (y > 0 && filled[y - 1, x] == 0) queue.Enqueue((y - 1, x));
-                    if (y < height - 1 && filled[y + 1, x] == 0) queue.Enqueue((y + 1, x));
-                    if (x > 0 && filled[y, x - 1] == 0) queue.Enqueue((y, x - 1));
-                    if (x < width - 1 && filled[y, x + 1] == 0) queue.Enqueue((y, x + 1));
-                }
-            }
-
-            // Invert the image so cards are white
-            for (int y = 0; y < height; y++)
-                for (int x = 0; x < width; x++)
-                    filled[y, x] = (byte)(filled[y, x] == 0 ? 255 : 0);
-
-            return filled;
-        }
-
-
         public static byte[,] FloodFillSolid(byte[,] edges)
         {
             int height = edges.GetLength(0);
             int width = edges.GetLength(1);
             byte[,] filled = new byte[height, width];
 
-            // First pass: Copy edges and set all non-edge pixels to unvisited (0)
+            // first pass: Copy edges and set all non-edge pixels to unvisited (0)
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)
                     filled[y, x] = 0;
 
-            // Create queue for flood fill
+            // create queue for flood fill
             Queue<(int y, int x)> queue = new Queue<(int y, int x)>();
 
-            // Add border pixels to queue if they're not edge pixels
+            // add border pixels to queue if they're not edge pixels
             for (int x = 0; x < width; x++)
             {
                 if (edges[0, x] == 0) queue.Enqueue((0, x));
@@ -375,16 +330,15 @@ namespace INFOIBV
                 if (edges[y, width - 1] == 0) queue.Enqueue((y, width - 1));
             }
 
-            // Flood fill from borders, marking background as 255
-            // Will only spread through non-edge pixels
+            //fFlood fill from borders, marking background as 255
             while (queue.Count > 0)
             {
                 var (y, x) = queue.Dequeue();
-                if (filled[y, x] == 0 && edges[y, x] == 0) // Only fill if unvisited and not an edge
+                if (filled[y, x] == 0 && edges[y, x] == 0) // only fill if unvisited and not an edge
                 {
-                    filled[y, x] = 255;  // Mark as background
+                    filled[y, x] = 255;
 
-                    // Add neighboring pixels if they're not edges
+                    // add neighboring pixels if they're not edges
                     if (y > 0 && edges[y - 1, x] == 0 && filled[y - 1, x] == 0)
                         queue.Enqueue((y - 1, x));
                     if (y < height - 1 && edges[y + 1, x] == 0 && filled[y + 1, x] == 0)
@@ -396,7 +350,7 @@ namespace INFOIBV
                 }
             }
 
-            // Final pass: Invert and ensure all non-background pixels are white
+            // invert and ensure all non-background pixels are white
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)
                     filled[y, x] = (byte)(filled[y, x] == 255 ? 0 : 255);
@@ -415,7 +369,6 @@ namespace INFOIBV
         /// <returns>The analyzed region with all properties calculated</returns>
         private static Region AnalyzeRegion(Region region, byte[,] binaryImage)
         {
-            // Basic properties
             region.Area = region.Pixels.Count;
             region.OuterContour = TraceBoundary(binaryImage, region.Pixels[0]);
             region.Perimeter = CalculateAccuratePerimeter(region.OuterContour);
@@ -456,7 +409,7 @@ namespace INFOIBV
                 m11 += dx * dy;
             }
 
-            // Normalize moments by area
+            // normalize moments
             return (m20 / region.Area, m02 / region.Area, m11 / region.Area);
         }
 
@@ -482,29 +435,25 @@ namespace INFOIBV
             for (int i = 0; i < contour.Count; i++)
             {
                 var currentPixel = contour[i];
-                var nextPixel = contour[(i + 1) % contour.Count]; // Loop back at the end to close the contour
+                var nextPixel = contour[(i + 1) % contour.Count]; // loop back at the end to close contour
 
                 int deltaY = Math.Abs(nextPixel.Y - currentPixel.Y);
                 int deltaX = Math.Abs(nextPixel.X - currentPixel.X);
 
                 if (deltaY == 0 || deltaX == 0)
                 {
-                    // Horizontal or vertical step
+                    // horizontal or vertical step
                     perimeter += 1;
                 }
                 else if (deltaY == 1 && deltaX == 1)
                 {
-                    // Diagonal step
+                    // diagonal step
                     perimeter += Math.Sqrt(2);
                 }
             }
 
             return perimeter;
         }
-
-
-
-
 
         /// <summary>
         /// Calculates the circularity of the region

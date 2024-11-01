@@ -52,10 +52,10 @@ namespace INFOIBV
             (halfHeight, -halfWidth)    // bottom left
             };
 
-            // Get the angle - 0 for AABB, specified angle for OBB
+            // get  angle - 0 for AABB, specified angle for OBB
             double angle = (box is OrientedBoundingBox obb) ? -obb.Angle : 0;
 
-            // Rotate corners and translate to center position
+            // rotate corners and translate to center pos
             (int Y, int X)[] rotatedCorners = new (int Y, int X)[4];
             for (int i = 0; i < 4; i++)
             {
@@ -66,7 +66,7 @@ namespace INFOIBV
                 );
             }
 
-            // Draw lines between corners
+            // draw lines between corners
             for (int i = 0; i < 4; i++)
             {
                 int nextIndex = (i + 1) % 4;
@@ -80,7 +80,6 @@ namespace INFOIBV
             }
         }
 
-
         private static void DrawLine(Color[,] image, int x0, int y0, int x1, int y1, Color color, int thickness = 2)
         {
             int imageHeight = image.GetLength(0);
@@ -91,7 +90,7 @@ namespace INFOIBV
             int sy = y0 < y1 ? 1 : -1;
             int err = dx - dy;
 
-            
+
 
             while (true)
             {
@@ -216,12 +215,11 @@ namespace INFOIBV
             return (newY, newX);  // Return in (Y, X) format
         }
 
-
         public static Color[,] RotateRegionToUpright(Color[,] sourceImage, OrientedBoundingBox boundingBox)
         {
             var (centerY, centerX) = boundingBox.Center;
             double angleDegrees = -boundingBox.Angle;
-            // Determine if we need an additional 90° rotation to make longer side vertical
+            // determine if we need a 90° rotation to make long side vertical
             bool needsAdditional90 = boundingBox.Width > boundingBox.Height;
             if (needsAdditional90)
             {
@@ -230,7 +228,7 @@ namespace INFOIBV
 
             int originalWidth = sourceImage.GetLength(1);
             int originalHeight = sourceImage.GetLength(0);
-            // If we did a 90° rotation, swap width and height
+            // if we did a 90° rotation, swap width and height
             int newHeight = (int)(needsAdditional90 ? boundingBox.Width : boundingBox.Height);
             int newWidth = (int)(needsAdditional90 ? boundingBox.Height : boundingBox.Width);
 
@@ -279,22 +277,20 @@ namespace INFOIBV
             int originalWidth = sourceImage.GetLength(1);
             int originalHeight = sourceImage.GetLength(0);
 
-            // Calculate padding amounts
-            float widthPadding =(float) (boundingBox.Width * paddingRatio);
+            // calculate padding amounts
+            float widthPadding = (float)(boundingBox.Width * paddingRatio);
             float heightPadding = (float)(boundingBox.Height * paddingRatio);
 
-            // Get the dimensions of the padded bounding box
             int newWidth = (int)(boundingBox.Width + 2 * widthPadding);
             int newHeight = (int)(boundingBox.Height + 2 * heightPadding);
 
-            // Calculate the top-left corner from the center, including padding
+            // calculate the top-left corner from the center, including padding
             int startY = (int)(boundingBox.Center.Y - (boundingBox.Height / 2 + heightPadding));
             int startX = (int)(boundingBox.Center.X - (boundingBox.Width / 2 + widthPadding));
 
-            // Create the output image with the padded size
             byte[,] extractedContent = new byte[newHeight, newWidth];
 
-            // Copy the pixels from the source image to the new image
+            // copy pixels from the source image to the new image
             for (int y = 0; y < newHeight; y++)
             {
                 for (int x = 0; x < newWidth; x++)
@@ -302,7 +298,6 @@ namespace INFOIBV
                     int sourceY = startY + y;
                     int sourceX = startX + x;
 
-                    // Check if we're within the bounds of the source image
                     if (sourceX >= 0 && sourceX < originalWidth &&
                         sourceY >= 0 && sourceY < originalHeight)
                     {
@@ -317,11 +312,11 @@ namespace INFOIBV
 
         private static Color BilinearInterpolation(Color p11, Color p12, Color p21, Color p22, double wx, double wy)
         {
-            // Interpolate each channel separately
+            // interpolate each channel separately
             byte r = BilinearInterpolateChannel(p11.R, p12.R, p21.R, p22.R, wx, wy);
             byte g = BilinearInterpolateChannel(p11.G, p12.G, p21.G, p22.G, wx, wy);
             byte b = BilinearInterpolateChannel(p11.B, p12.B, p21.B, p22.B, wx, wy);
-            
+
 
             return Color.FromArgb(r, g, b);
         }
@@ -339,7 +334,7 @@ namespace INFOIBV
 
             Color[,] scaledImage = new Color[newHeight, newWidth];
 
-            // Calculate scaling ratios
+            // salculate scaling ratios
             double xRatio = (double)(originalWidth - 1) / newWidth;
             double yRatio = (double)(originalHeight - 1) / newHeight;
 
@@ -347,7 +342,6 @@ namespace INFOIBV
             {
                 for (int x = 0; x < newWidth; x++)
                 {
-                    // Calculate corresponding source coordinates
                     double gx = x * xRatio;
                     double gy = y * yRatio;
 
@@ -356,17 +350,15 @@ namespace INFOIBV
                     int x2 = Math.Min(x1 + 1, originalWidth - 1);
                     int y2 = Math.Min(y1 + 1, originalHeight - 1);
 
-                    // Calculate weights for interpolation
+                    // calculate weights for interpolation
                     double wx = gx - x1;
                     double wy = gy - y1;
 
-                    // Perform bilinear interpolation using existing method
                     Color interpolatedColor = BilinearInterpolation(
                         sourceImage[y1, x1], sourceImage[y1, x2],
                         sourceImage[y2, x1], sourceImage[y2, x2],
                         wx, wy);
 
-                    // Set the interpolated color in the scaled image
                     scaledImage[y, x] = interpolatedColor;
                 }
             }

@@ -76,7 +76,9 @@ namespace INFOIBV
             return output;
         }
 
-
+        private const double RED_LUMA_COEFFICIENT = 0.299;
+        private const double GREEN_LUMA_COEFFICIENT = 0.587;
+        private const double BLUE_LUMA_COEFFICIENT = 0.114;
 
         /// <summary>
         /// Converts Color[,] to grayscale byte[,] for processing
@@ -93,9 +95,9 @@ namespace INFOIBV
                 {
                     Color pixel = colorImage[y, x];
                     grayscale[y, x] = (byte)(
-                        0.299 * pixel.R +
-                        0.587 * pixel.G +
-                        0.114 * pixel.B
+                        RED_LUMA_COEFFICIENT * pixel.R +
+                        GREEN_LUMA_COEFFICIENT * pixel.G +
+                        BLUE_LUMA_COEFFICIENT * pixel.B
                     );
                 }
             }

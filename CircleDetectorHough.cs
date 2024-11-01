@@ -41,7 +41,7 @@ namespace INFOIBV
             int thresholdValue = (int)Math.Round(thresholdPercentage * maxAccumulatorValue);
             List<Circle> initalCircles = findCircles(supressedAccumulator, minRadius, radiusStep, thresholdValue);
             Console.WriteLine("amount of circles detected: " + initalCircles.Count);
-            foundCircles = MergeSimilarCircles(initalCircles,((inputImage.GetLength(0) + inputImage.GetLength(1))/2 )* 0.15f);
+            foundCircles = MergeSimilarCircles(initalCircles, ((inputImage.GetLength(0) + inputImage.GetLength(1)) / 2) * 0.15f);
             Console.WriteLine("amount of distinct circles detected: " + foundCircles.Count);
             // now check if circles have very similar center position, then check if they are similar size
 
@@ -49,7 +49,7 @@ namespace INFOIBV
         }
 
 
-        public static List<Circle> findCircles(byte[,]greyScaleImage)
+        public static List<Circle> findCircles(byte[,] greyScaleImage)
         {
             byte[,] SymbolEdges = EdgeDetector.detectEdgesCanny(greyScaleImage, 40, 130, 1f, 3);
 
@@ -62,7 +62,7 @@ namespace INFOIBV
 
             // Apply safety bounds to your actual used values
             minRadiusArithmetic = Math.Max(minRadiusArithmetic, 3);
-            
+
 
             // Debug logging
             Console.WriteLine("=== Debug Information ===");
@@ -74,12 +74,12 @@ namespace INFOIBV
         }
 
 
-        private static List<Circle> MergeSimilarCircles(List<Circle> circles,double centerDistanceThreshold =5f)
+        private static List<Circle> MergeSimilarCircles(List<Circle> circles, double centerDistanceThreshold = 5f)
         {
             List<Circle> mergedCircles = new List<Circle>();
             List<bool> processed = new List<bool>(new bool[circles.Count]);
 
-            // Parameters for similarity
+            // parameters for similarity
             double radiusRatioThreshold = 0.3;    // Maximum relative difference in radius (20%)
 
             for (int i = 0; i < circles.Count; i++)
@@ -105,7 +105,7 @@ namespace INFOIBV
                     }
                 }
 
-                // Merge similar circles into one
+                // merge similar circles into one
                 if (similarCircles.Count > 0)
                 {
                     Circle mergedCircle = MergeCircleGroup(similarCircles);
@@ -127,7 +127,7 @@ namespace INFOIBV
         {
             if (circles.Count == 1) return circles[0];
 
-            // Average center coordinates and radius
+            // average center coordinates and radius
             double sumX = 0, sumY = 0, sumR = 0;
             foreach (var circle in circles)
             {
@@ -136,13 +136,13 @@ namespace INFOIBV
                 sumR += circle.Radius;
             }
 
-            
+
 
             (int Y, int X) mergedCenter = ((int)sumY / circles.Count, (int)sumX / circles.Count);
 
             float mergedRadius = (float)(sumR / circles.Count);
 
-            return new Circle(mergedCenter.X,mergedCenter.Y,(int)Math.Round(mergedRadius));
+            return new Circle(mergedCenter.X, mergedCenter.Y, (int)Math.Round(mergedRadius));
         }
 
 
@@ -150,7 +150,7 @@ namespace INFOIBV
 
         public static Color[,] DrawCircles(List<Circle> circles, Color[,] image)
         {
-            Color[,] outputImage = (Color[,])image.Clone();// Clone the original image to draw on
+            Color[,] outputImage = (Color[,])image.Clone();
 
             foreach (Circle circle in circles)
             {
@@ -168,7 +168,7 @@ namespace INFOIBV
 
             int x = 0;
             int y = radius;
-            int d = 3 - 2 * radius; // Starting decision parameter for Bresenham's algorithm
+            int d = 3 - 2 * radius; // starting decision parameter for Bresenhamz algorithm
 
             while (y >= x)
             {
@@ -202,7 +202,7 @@ namespace INFOIBV
         {
             if (x >= 0 && x < image.GetLength(1) && y >= 0 && y < image.GetLength(0))
             {
-                image[y, x] = Color.Blue; // Set pixel to white or your desired color for drawing
+                image[y, x] = Color.Blue;
             }
         }
 
@@ -252,10 +252,9 @@ namespace INFOIBV
 
                         for (int ri = 0; ri < radiusRange; ri++)
                         {
-
                             int radius = (int)(minRadius + ri * radiusStep);
 
-                            // use Bresenham's algorithm to accumulate along the circle perimeter
+                            // use Bresenhamz algorithm to accumulate along the circle perimeter
                             bresenhamCircleAccumulateVotes(x, y, radius, accumulator, ri);
                         }
                     }
@@ -294,7 +293,7 @@ namespace INFOIBV
         {
             int x = 0;
             int y = radius;
-            int d = 3 - 2 * radius;  // starting decision parameter for Bresenhams algorithm
+            int d = 3 - 2 * radius;  // starting decision parameter for bresenhams algorithm
 
 
             bresenhamVoteForCircleCenter(centerX, centerY, x, y, accumulator, radiusIndex);
@@ -342,12 +341,6 @@ namespace INFOIBV
                 accumulator[y, x, radiusIndex]++;
             }
         }
-
-
-
-
-
-
 
         // Perform non-maximum suppression on the accumulator
         private static int[,,] nonMaximumSuppression(int[,,] accumulator3D)
@@ -399,11 +392,6 @@ namespace INFOIBV
             return suppressedAccumulator;
         }
 
-
-
-
-
-
         private static List<(int x, int y, int radius)> findPeaks(int[,,] accumulator3D, int threshold)
         {
             int height = accumulator3D.GetLength(0);
@@ -432,7 +420,6 @@ namespace INFOIBV
             return peaks;
         }
 
-
         private static int findMaxAccumulatorValue(int[,,] accumulator, int radiusRange, int imgHeight, int imgWidth)
         {
             int maxAccumulatorValue = 0;
@@ -451,10 +438,5 @@ namespace INFOIBV
             }
             return maxAccumulatorValue;
         }
-
-
-
-
-
     }
 }
