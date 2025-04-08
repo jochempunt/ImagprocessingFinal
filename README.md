@@ -27,16 +27,14 @@ The project revolves around detecting specific playing card types, such as spade
 - [x] Region Finding and analysing those shapes (can be expanded) 
 - [x] finding good parameters to analyse and decide when a region is be a card(shape) or not (see "findRegions")
 - [x] analysing the outer contour of the region, or using convex hull or minBoundingBox 
-- [ ] Collecting a diverse dataset of card images (min 10, and 10 distractor images)
-- [ ] Rotating the card, and evtl scaling it 
-- [ ] using found Card-Shapes as ROI (Regions of interest) and doing analysis again
-	- [ ] another region finding
+- [x] Collecting a diverse dataset of card images (min 10, and 10 distractor images)
+- [x] Rotating the card, and evtl scaling it 
+- [x] using found Card-Shapes as ROI (Regions of interest) and doing analysis again
+	- [x] another region finding
 	- [ ] evtl. edge detection / contour shape or sth
-	- [ ] checking regions for (mean) color (black/red)
-	- [ ] region shape decides final verdict on which suit it is (matching shape or using region parameters)
-	- [ ] count these regions (evtl)
-- [ ] Discurring and think ab. angle coverage (considering rotations, perspective changes)
-- [ ]  Discussingand think ab. potential card overlap coverage.
+	- [x] checking regions for (mean) color (black/red)
+	- [x] region shape decides final verdict on which suit it is (hough circle detection)
+	- [x] count these regions (evtl)
 
 
 
