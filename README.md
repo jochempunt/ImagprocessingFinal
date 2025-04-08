@@ -1,4 +1,4 @@
-# Image Processing: The Final Assignment | Detecting a Playing Card
+# Image Processing: Detecting a specific Playing Card [Heart Cards]
 
 This project aims to detect specific playing card types, like spades or hearts, from an image taken at an above angle and  evtl. count the value of the cards (excluding face cards).
 
